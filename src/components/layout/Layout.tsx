@@ -92,7 +92,7 @@ export function Layout({ children, sidebar, onFileSelect, isLoading, currentFile
   }, [])
 
   return (
-    <div className="h-screen flex bg-background text-foreground overflow-hidden">
+    <div className="h-screen flex bg-background text-foreground overflow-hidden" data-theme-target>
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div 
@@ -108,7 +108,7 @@ export function Layout({ children, sidebar, onFileSelect, isLoading, currentFile
         "flex flex-col shadow-lg lg:shadow-none",
         sidebarOpen ? "w-80 translate-x-0" : "w-0 -translate-x-full lg:translate-x-0",
         "overflow-hidden"
-      )}>
+      )} data-theme-target>
         <div className="h-full flex flex-col">
           {/* Enhanced Sidebar Header */}
           <div className="p-4 border-b border-border bg-card/95 backdrop-blur-sm">
@@ -241,14 +241,14 @@ export function Layout({ children, sidebar, onFileSelect, isLoading, currentFile
         </header>
 
         {/* Content Area with Loading State */}
-        <main className="flex-1 overflow-hidden relative">
+        <main className="flex-1 overflow-hidden relative" data-theme-target>
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-20">
               <LoadingSpinner size="lg" text="Loading content..." />
             </div>
           )}
           
-          <div className="h-full overflow-auto">
+          <div className="h-full overflow-auto" data-theme-target>
             {children}
           </div>
         </main>

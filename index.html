@@ -33,6 +33,37 @@
     <meta name="theme-color" content="#8b5cf6" />
     <meta name="msapplication-TileColor" content="#8b5cf6" />
     
+    <!-- Prevent Theme Flash -->
+    <script>
+      (function() {
+        try {
+          const savedTheme = localStorage.getItem('ui-theme') || 'system';
+          const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const resolvedTheme = savedTheme === 'system' ? (systemPrefersDark ? 'dark' : 'light') : savedTheme;
+          
+          // Apply theme immediately with changing class
+          const root = document.documentElement;
+          root.classList.add('theme-changing');
+          root.classList.remove('light', 'dark');
+          root.classList.add(resolvedTheme);
+          
+          // Set theme color based on resolved theme
+          const themeColor = resolvedTheme === 'dark' ? '#0f172a' : '#ffffff';
+          const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+          if (metaThemeColor) {
+            metaThemeColor.setAttribute('content', themeColor);
+          }
+          
+          // Store the initial theme for React to pick up
+          window.__INITIAL_THEME__ = resolvedTheme;
+        } catch (e) {
+          // Fallback to light theme
+          document.documentElement.classList.add('theme-changing', 'light');
+          window.__INITIAL_THEME__ = 'light';
+        }
+      })();
+    </script>
+    
     <title>Learning Notes - Interactive Knowledge Hub</title>
   </head>
   <body>

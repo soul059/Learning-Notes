@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Sun, Moon, Monitor, Palette, Check } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeProvider'
 import { Button } from '@/components/ui/button'
@@ -12,9 +12,10 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ variant = 'button', showLabel = false, className }: ThemeToggleProps) {
-  const { theme, setTheme } = useTheme()
+  const { theme, resolvedTheme, systemTheme, setTheme } = useTheme()
   const { addToast } = useToast()
   const [isOpen, setIsOpen] = useState(false)
+  const [isChanging, setIsChanging] = useState(false)
 
   const themes = [
     { value: 'light', label: 'Light', icon: Sun, description: 'Light mode' },
@@ -24,14 +25,30 @@ export function ThemeToggle({ variant = 'button', showLabel = false, className }
 
   const currentTheme = themes.find(t => t.value === theme) || themes[2]
 
-  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
+  const handleThemeChange = async (newTheme: 'light' | 'dark' | 'system') => {
+    if (isChanging || newTheme === theme) return
+    
+    setIsChanging(true)
+    
+    // Brief delay to show changing state
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
     setTheme(newTheme)
     setIsOpen(false)
     
+    // Wait for theme to apply before removing changing state
+    setTimeout(() => {
+      setIsChanging(false)
+    }, 400)
+    
     // Show enhanced toast notification
+    const themeLabel = newTheme === 'system' 
+      ? `system (${systemTheme})` 
+      : newTheme
+    
     addToast({
       title: 'Theme updated',
-      description: `Switched to ${newTheme === 'system' ? 'system preference' : newTheme + ' mode'}`,
+      description: `Switched to ${themeLabel} mode`,
       type: 'success',
       duration: 2000
     })
@@ -43,6 +60,15 @@ export function ThemeToggle({ variant = 'button', showLabel = false, className }
     handleThemeChange(themes[nextIndex].value)
   }
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setIsOpen(false)
+    if (isOpen) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [isOpen])
+
   // Simple button toggle (cycles through themes)
   if (variant === 'button') {
     return (
@@ -50,10 +76,18 @@ export function ThemeToggle({ variant = 'button', showLabel = false, className }
         variant="ghost"
         size="sm"
         onClick={cycleTheme}
-        className={cn("h-8 w-8 p-0", className)}
-        title={`Current: ${currentTheme.label} • Click to switch`}
+        disabled={isChanging}
+        className={cn(
+          "h-8 w-8 p-0 transition-all duration-200", 
+          isChanging && "opacity-50 cursor-not-allowed",
+          className
+        )}
+        title={`Current: ${currentTheme.label} (${resolvedTheme}) • Click to switch`}
       >
-        <currentTheme.icon className="h-4 w-4 transition-transform duration-200 hover:scale-110" />
+        <currentTheme.icon className={cn(
+          "h-4 w-4 transition-all duration-200", 
+          isChanging ? "scale-90 opacity-50" : "hover:scale-110"
+        )} />
       </Button>
     )
   }
@@ -78,9 +112,11 @@ export function ThemeToggle({ variant = 'button', showLabel = false, className }
               variant={isActive ? "secondary" : "ghost"}
               size="sm"
               onClick={() => handleThemeChange(themeOption.value)}
+              disabled={isChanging}
               className={cn(
                 "h-7 px-2 text-xs gap-1.5 transition-all duration-200",
-                isActive && "bg-accent border shadow-sm"
+                isActive && "bg-accent border shadow-sm",
+                isChanging && "opacity-50 cursor-not-allowed"
               )}
               title={themeOption.description}
             >
@@ -96,18 +132,23 @@ export function ThemeToggle({ variant = 'button', showLabel = false, className }
 
   // Dropdown variant
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative", className)} onClick={(e) => e.stopPropagation()}>
       <Button
         variant="ghost"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
+        disabled={isChanging}
         className={cn(
           "h-8 gap-2 transition-colors duration-200",
-          showLabel ? "px-3" : "w-8 p-0"
+          showLabel ? "px-3" : "w-8 p-0",
+          isChanging && "opacity-50 cursor-not-allowed"
         )}
-        title={`Current: ${currentTheme.label}`}
+        title={`Current: ${currentTheme.label} (${resolvedTheme})`}
       >
-        <currentTheme.icon className="h-4 w-4" />
+        <currentTheme.icon className={cn(
+          "h-4 w-4 transition-all duration-200",
+          isChanging && "scale-90 opacity-50"
+        )} />
         {showLabel && <span className="text-sm">{currentTheme.label}</span>}
       </Button>
 
@@ -130,9 +171,10 @@ export function ThemeToggle({ variant = 'button', showLabel = false, className }
                   <button
                     key={themeOption.value}
                     onClick={() => handleThemeChange(themeOption.value)}
+                    disabled={isChanging}
                     className={cn(
                       "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors duration-150",
-                      "hover:bg-accent focus:bg-accent focus:outline-none",
+                      "hover:bg-accent focus:bg-accent focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed",
                       isActive && "bg-accent/50 text-accent-foreground"
                     )}
                   >
@@ -157,9 +199,7 @@ export function ThemeToggle({ variant = 'button', showLabel = false, className }
                 <div className="text-xs text-muted-foreground flex items-center gap-2">
                   <Monitor className="h-3 w-3" />
                   <span>
-                    Following system: {
-                      window.matchMedia('(prefers-color-scheme: dark)').matches ? 'Dark' : 'Light'
-                    }
+                    Following system: {systemTheme} mode
                   </span>
                 </div>
               </div>

@@ -13,17 +13,72 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  /* Smooth theme transitions */
-  .theme-transition,
-  .theme-transition *,
-  .theme-transition *:before,
-  .theme-transition *:after {
-    transition: background-color 300ms ease-in-out, 
-                border-color 300ms ease-in-out, 
-                color 300ms ease-in-out,
-                fill 300ms ease-in-out,
-                stroke 300ms ease-in-out,
-                box-shadow 300ms ease-in-out !important;
+  /* Smooth theme transitions - More comprehensive approach */
+  html {
+    transition: none;
+  }
+  
+  html.theme-transition {
+    transition: background-color 200ms ease-out, color 200ms ease-out;
+  }
+  
+  html.theme-transition *,
+  html.theme-transition *:before,
+  html.theme-transition *:after {
+    transition: background-color 200ms ease-out, 
+                border-color 200ms ease-out, 
+                color 200ms ease-out,
+                fill 200ms ease-out,
+                stroke 200ms ease-out,
+                box-shadow 200ms ease-out,
+                opacity 200ms ease-out !important;
+  }
+
+  /* Immediate theme changes - no transition during switching */
+  html.theme-changing,
+  html.theme-changing * {
+    transition: none !important;
+  }
+  
+  /* Ensure proper color inheritance */
+  html.theme-changing *:before,
+  html.theme-changing *:after {
+    transition: none !important;
+  }
+  
+  /* Force immediate update for critical UI elements */
+  html.theme-changing [data-theme-target] {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: hsl(var(--border)) !important;
+  }
+  
+  /* Prevent layout shift during theme changes */
+  html.theme-changing {
+    overflow-x: hidden;
+  }
+  
+  /* Ensure consistent backgrounds during theme changes */
+  html.theme-changing body {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+  
+  /* Additional elements that need immediate theme update */
+  html.theme-changing .bg-background {
+    background-color: hsl(var(--background)) !important;
+  }
+  
+  html.theme-changing .bg-card {
+    background-color: hsl(var(--card)) !important;
+  }
+  
+  html.theme-changing .text-foreground {
+    color: hsl(var(--foreground)) !important;
+  }
+  
+  html.theme-changing .border-border {
+    border-color: hsl(var(--border)) !important;
   }
 }
 

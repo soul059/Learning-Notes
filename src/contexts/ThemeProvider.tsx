@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { UserStateService } from '@/lib/userState'
 
 type Theme = 'dark' | 'light' | 'system'
@@ -36,23 +36,30 @@ export function ThemeProvider({
   ...props
 }: ThemeProviderProps) {
   // Get system preference
-  const getSystemTheme = (): 'dark' | 'light' => 
-    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  const getSystemTheme = useCallback((): 'dark' | 'light' => {
+    if (typeof window === 'undefined') return 'light'
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }, [])
 
   const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return defaultTheme
+    
     // Try to get theme from user state first, then localStorage as fallback
     const userStateTheme = UserStateService.getTheme()
     const localStorageTheme = localStorage.getItem(storageKey) as Theme
     return userStateTheme || localStorageTheme || defaultTheme
   })
   
-  const [systemTheme, setSystemTheme] = useState<'dark' | 'light'>(getSystemTheme)
+  const [systemTheme, setSystemTheme] = useState<'dark' | 'light'>(() => getSystemTheme())
+  const [isInitialized, setIsInitialized] = useState(false)
 
   // Calculate the resolved theme (what's actually applied)
   const resolvedTheme = theme === 'system' ? systemTheme : theme
 
   // Listen for system theme changes
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     
     const handleChange = (e: MediaQueryListEvent) => {
@@ -61,47 +68,82 @@ export function ThemeProvider({
       console.log('🎨 System theme changed to:', newSystemTheme)
     }
 
+    // Set initial system theme
+    setSystemTheme(getSystemTheme())
+    
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [])
+  }, [getSystemTheme])
 
-  // Apply theme to document
+  // Apply theme to document with better coordination and timing
   useEffect(() => {
-    const root = window.document.documentElement
-
-    // Add transition class for smooth theme changes
-    if (enableTransitions) {
-      root.classList.add('theme-transition')
-    }
-
-    // Remove all theme classes
-    root.classList.remove('light', 'dark')
+    if (typeof window === 'undefined') return
     
-    // Add the resolved theme class
-    root.classList.add(resolvedTheme)
-
-    // Remove transition class after animation completes
-    if (enableTransitions) {
-      const timer = setTimeout(() => {
-        root.classList.remove('theme-transition')
-      }, 300)
-      return () => clearTimeout(timer)
+    const root = window.document.documentElement
+    
+    // For initial load - apply theme without transitions
+    if (!isInitialized) {
+      root.classList.remove('light', 'dark', 'theme-transition')
+      root.classList.add('theme-changing', resolvedTheme)
+      
+      const initTimer = setTimeout(() => {
+        root.classList.remove('theme-changing')
+        setIsInitialized(true)
+      }, 100)
+      
+      return () => clearTimeout(initTimer)
     }
-  }, [resolvedTheme, enableTransitions])
+    
+    // For theme changes after initialization
+    const applyThemeChange = () => {
+      // Step 1: Start theme change (disable transitions)
+      root.classList.add('theme-changing')
+      root.classList.remove('theme-transition', 'light', 'dark')
+      
+      // Step 2: Apply new theme immediately
+      root.classList.add(resolvedTheme)
+      
+      if (enableTransitions) {
+        // Step 3: Enable smooth transitions after a short delay
+        const enableTransitionsTimer = setTimeout(() => {
+          root.classList.remove('theme-changing')
+          root.classList.add('theme-transition')
+          
+          // Step 4: Remove transition class after animation
+          const cleanupTimer = setTimeout(() => {
+            root.classList.remove('theme-transition')
+          }, 300)
+          
+          return () => clearTimeout(cleanupTimer)
+        }, 100)
+        
+        return () => clearTimeout(enableTransitionsTimer)
+      } else {
+        // No transitions - just remove changing class
+        const cleanupTimer = setTimeout(() => {
+          root.classList.remove('theme-changing')
+        }, 50)
+        
+        return () => clearTimeout(cleanupTimer)
+      }
+    }
+    
+    return applyThemeChange()
+  }, [resolvedTheme, enableTransitions, isInitialized])
 
-  const setTheme = (newTheme: Theme) => {
+  const setTheme = useCallback((newTheme: Theme) => {
     console.log('🎨 Theme changing from', theme, 'to', newTheme)
     
     // Save to both localStorage (backward compatibility) and user state
     localStorage.setItem(storageKey, newTheme)
     UserStateService.setTheme(newTheme)
     setThemeState(newTheme)
-  }
+  }, [theme, storageKey])
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     const nextTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'
     setTheme(nextTheme)
-  }
+  }, [theme, setTheme])
 
   const value = {
     theme,

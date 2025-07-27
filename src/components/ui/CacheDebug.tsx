@@ -15,6 +15,12 @@ export function CacheDebug() {
     usage: 0,
     itemCount: 0
   })
+  const [instantLoadingStats, setInstantLoadingStats] = useState({
+    staleHits: 0,
+    freshHits: 0,
+    backgroundRefreshes: 0,
+    failureFallbacks: 0
+  })
 
   const updateStats = () => {
     try {
@@ -29,6 +35,15 @@ export function CacheDebug() {
       // Get storage statistics
       const storage = UserStateService.getStorageStats()
       setStorageStats(storage)
+
+      // Get instant loading stats from console tracking
+      const instantStats = {
+        staleHits: (window as any).cacheStaleHits || 0,
+        freshHits: (window as any).cacheFreshHits || 0,
+        backgroundRefreshes: (window as any).backgroundRefreshes || 0,
+        failureFallbacks: (window as any).failureFallbacks || 0
+      }
+      setInstantLoadingStats(instantStats)
     } catch (error) {
       console.warn('Error updating cache stats:', error)
     }
@@ -37,12 +52,30 @@ export function CacheDebug() {
   useEffect(() => {
     updateStats()
     const interval = setInterval(updateStats, 2000)
+    
+    // Initialize global counters for instant loading tracking
+    if (!(window as any).cacheStaleHits) {
+      (window as any).cacheStaleHits = 0;
+      (window as any).cacheFreshHits = 0;
+      (window as any).backgroundRefreshes = 0;
+      (window as any).failureFallbacks = 0;
+    }
+    
     return () => clearInterval(interval)
   }, [])
 
   const handleClearCache = () => {
-    CacheService.clearAll()
-    updateStats()
+    try {
+      CacheService.clearAll()
+      // Reset instant loading counters
+      ;(window as any).cacheStaleHits = 0
+      ;(window as any).cacheFreshHits = 0
+      ;(window as any).backgroundRefreshes = 0
+      ;(window as any).failureFallbacks = 0
+      updateStats()
+    } catch (error) {
+      console.error('Error clearing cache:', error)
+    }
   }
 
   const handleOptimizeCache = () => {
@@ -97,6 +130,16 @@ export function CacheDebug() {
             <div>Items: {storageStats.itemCount}</div>
           </div>
         </div>
+
+        <div>
+          <strong>⚡ Instant Loading:</strong>
+          <div className="ml-2 text-xs text-muted-foreground">
+            <div>🟢 Fresh hits: {instantLoadingStats.freshHits}</div>
+            <div>🟡 Stale hits: {instantLoadingStats.staleHits}</div>
+            <div>🔄 Background refreshes: {instantLoadingStats.backgroundRefreshes}</div>
+            <div>🆘 Failure fallbacks: {instantLoadingStats.failureFallbacks}</div>
+          </div>
+        </div>
         
         <div>
           <strong>User State:</strong>
@@ -104,6 +147,7 @@ export function CacheDebug() {
             <div>Current File: {userState.currentFile || 'None'}</div>
             <div>Last Search: {userState.lastSearch || 'None'}</div>
             <div>Repository: {userState.repository ? `${userState.repository.owner}/${userState.repository.repo}` : 'None'}</div>
+            <div>Cache Prefs: Stale={userState.cacheLoading?.useStaleData ? '✅' : '❌'}, Instant={userState.cacheLoading?.instantLoad ? '✅' : '❌'}</div>
           </div>
         </div>
         

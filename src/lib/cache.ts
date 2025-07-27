@@ -71,7 +71,6 @@ export class CacheService {
     // Check memory cache first
     const memoryItem = this.memoryCache.get(key)
     if (memoryItem && now - memoryItem.timestamp <= memoryItem.ttl) {
-      console.log('⚡ Memory cache hit:', key)
       return memoryItem.data
     }
 
@@ -93,14 +92,12 @@ export class CacheService {
       // Check if expired
       if (now - cacheItem.timestamp > cacheItem.ttl) {
         storage.removeItem(cacheKey)
-        console.log('🗑️ Cache expired:', key)
         return null
       }
 
       // Store in memory cache for next time
       this.setMemory(key, cacheItem)
 
-      console.log('💾 Cache hit:', { key, age: now - cacheItem.timestamp })
       return cacheItem.data
     } catch (error) {
       console.warn('⚠️ Cache read failed:', error)
@@ -110,10 +107,95 @@ export class CacheService {
   }
 
   /**
+   * Get item from cache even if expired (for instant loading fallback)
+   */
+  static getStale<T>(key: string, persistent: boolean = true): T | null {
+    // Check memory cache first (even if expired)
+    const memoryItem = this.memoryCache.get(key)
+    if (memoryItem) {
+      return memoryItem.data
+    }
+
+    // Check storage cache (even if expired)
+    const storage = persistent ? localStorage : sessionStorage
+    const cacheKey = this.PREFIX + key
+
+    try {
+      const item = storage.getItem(cacheKey)
+      if (!item) return null
+
+      const cacheItem: CacheItem<T> = JSON.parse(item)
+      
+      // Store in memory cache for next time
+      this.setMemory(key, cacheItem)
+      
+      return cacheItem.data
+    } catch (error) {
+      return null
+    }
+  }
+
+  /**
    * Check if item exists and is not expired
    */
   static has(key: string, persistent: boolean = true): boolean {
     return this.get(key, persistent) !== null
+  }
+
+  /**
+   * Check if item exists (even if expired) - useful for instant loading
+   */
+  static hasStale(key: string, persistent: boolean = true): boolean {
+    return this.getStale(key, persistent) !== null
+  }
+
+  /**
+   * Get cache info for a key (exists, expired, age)
+   */
+  static getCacheInfo(key: string, persistent: boolean = true): {
+    exists: boolean
+    expired: boolean
+    age: number
+    hasStale: boolean
+  } {
+    const now = Date.now()
+    
+    // Check memory cache first
+    const memoryItem = this.memoryCache.get(key)
+    if (memoryItem) {
+      const age = now - memoryItem.timestamp
+      const expired = age > memoryItem.ttl
+      return {
+        exists: !expired,
+        expired,
+        age,
+        hasStale: true
+      }
+    }
+
+    // Check storage cache
+    const storage = persistent ? localStorage : sessionStorage
+    const cacheKey = this.PREFIX + key
+
+    try {
+      const item = storage.getItem(cacheKey)
+      if (!item) {
+        return { exists: false, expired: false, age: 0, hasStale: false }
+      }
+
+      const cacheItem: CacheItem<any> = JSON.parse(item)
+      const age = now - cacheItem.timestamp
+      const expired = age > cacheItem.ttl
+
+      return {
+        exists: !expired,
+        expired,
+        age,
+        hasStale: true
+      }
+    } catch (error) {
+      return { exists: false, expired: false, age: 0, hasStale: false }
+    }
   }
 
   /**

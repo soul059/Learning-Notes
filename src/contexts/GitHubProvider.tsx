@@ -187,56 +187,87 @@ export function GitHubProvider({ children, config = defaultGitHubConfig }: GitHu
       setIsLoading(true)
       setError(null)
       
-      console.log('Loading lazy file structure...')
-      
-      // Check if we have cached file tree first
+      // Cache keys for this repository
       const cacheKey = `file-tree-${currentConfig.owner}-${currentConfig.repo}-${currentConfig.branch}`
-      const cachedTree = CacheService.get<any[]>(cacheKey)
+      const filesCacheKey = `files-list-${currentConfig.owner}-${currentConfig.repo}-${currentConfig.branch}`
+      const expandedStateKey = `expanded-folders-${currentConfig.owner}-${currentConfig.repo}-${currentConfig.branch}`
       
-      if (cachedTree && cachedTree.length > 0) {
-        console.log('💾 Using cached file tree:', { treeNodes: cachedTree.length })
-        setFileTree(cachedTree)
+      // 🚀 INSTANT LOADING: Try to load from cache first (even if stale)
+      const cacheInfo = CacheService.getCacheInfo(cacheKey)
+      
+      if (cacheInfo.hasStale) {
+        console.log('⚡ Instant loading from cache (may be stale)...')
         
-        // Restore expanded state for cached folders
-        const expandedStateKey = `expanded-folders-${currentConfig.owner}-${currentConfig.repo}-${currentConfig.branch}`
+        // Load stale data immediately for instant display
+        const cachedTree = CacheService.getStale<any[]>(cacheKey)
+        const cachedFiles = CacheService.getStale<GitHubFile[]>(filesCacheKey)
+        
+        if (cachedTree && cachedTree.length > 0) {
+          setFileTree(cachedTree)
+          console.log('� Instant tree loaded:', { nodes: cachedTree.length, expired: cacheInfo.expired })
+        }
+        
+        if (cachedFiles && cachedFiles.length > 0) {
+          setFiles(cachedFiles)
+          console.log('📦 Instant files loaded:', { files: cachedFiles.length, expired: cacheInfo.expired })
+        }
+        
+        // Restore expanded folders state
         const expandedFolders = JSON.parse(localStorage.getItem(expandedStateKey) || '{}')
         const expandedPaths = Object.keys(expandedFolders).filter(path => expandedFolders[path])
         
         if (expandedPaths.length > 0) {
-          console.log('🔄 Restoring expanded folders:', expandedPaths)
-          // Note: The FileTree component will handle the expanded state via getExpandedState
+          console.log('🔄 Restored expanded folders:', expandedPaths)
         }
         
-        // Also load any cached files list
-        const filesCacheKey = `files-list-${currentConfig.owner}-${currentConfig.repo}-${currentConfig.branch}`
-        const cachedFiles = CacheService.get<GitHubFile[]>(filesCacheKey)
-        if (cachedFiles) {
-          setFiles(cachedFiles)
-          console.log('💾 Using cached files list:', { filesCount: cachedFiles.length })
+        setIsLoading(false) // Show cached data immediately
+        
+        // If cache is still fresh, we're done
+        if (!cacheInfo.expired) {
+          console.log('✅ Cache is fresh, using cached data only')
+          return
         }
-      } else {
-        // Load initial structure (folders + README files only)
-        const [initialStructure, lazyTree] = await Promise.all([
-          githubService.getFolderStructure(), // Get folders and README files
-          githubService.getLazyFileTree()     // Get lazy-loading tree structure
-        ])
         
-        setFiles(initialStructure)
-        setFileTree(lazyTree)
-        
-        // Cache the initial tree and files for 1 hour (structure changes infrequently)
-        CacheService.set(cacheKey, lazyTree, 60 * 60 * 1000) // 1 hour
-        CacheService.set(`files-list-${currentConfig.owner}-${currentConfig.repo}-${currentConfig.branch}`, initialStructure, 60 * 60 * 1000) // 1 hour
-        
-        console.log('✅ Lazy file structure loaded and cached:', { 
-          files: initialStructure.length, 
-          treeNodes: lazyTree.length 
-        })
+        console.log('🔄 Cache expired, refreshing in background...')
       }
+      
+      // Load fresh data from GitHub (either no cache or cache expired)
+      console.log('🌐 Loading fresh data from GitHub...')
+      setIsLoading(true) // Set loading for background refresh
+      
+      const [initialStructure, lazyTree] = await Promise.all([
+        githubService.getFolderStructure(), // Get folders and README files
+        githubService.getLazyFileTree()     // Get lazy-loading tree structure
+      ])
+      
+      // Update with fresh data
+      setFiles(initialStructure)
+      setFileTree(lazyTree)
+      
+      // Cache the fresh data for 1 hour
+      CacheService.set(cacheKey, lazyTree, 60 * 60 * 1000) // 1 hour
+      CacheService.set(filesCacheKey, initialStructure, 60 * 60 * 1000) // 1 hour
+      
+      console.log('✅ Fresh data loaded and cached:', { 
+        files: initialStructure.length, 
+        treeNodes: lazyTree.length 
+      })
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load files')
-      setFiles([])
-      setFileTree([])
+      
+      // If we have cached data (even if stale), show it as fallback
+      const cachedTree = CacheService.getStale<any[]>(`file-tree-${currentConfig.owner}-${currentConfig.repo}-${currentConfig.branch}`)
+      const cachedFiles = CacheService.getStale<GitHubFile[]>(`files-list-${currentConfig.owner}-${currentConfig.repo}-${currentConfig.branch}`)
+      
+      if (cachedTree || cachedFiles) {
+        console.log('⚠️ Network error, using stale cache as fallback')
+        if (cachedTree) setFileTree(cachedTree)
+        if (cachedFiles) setFiles(cachedFiles)
+      } else {
+        setFiles([])
+        setFileTree([])
+      }
     } finally {
       setIsLoading(false)
     }

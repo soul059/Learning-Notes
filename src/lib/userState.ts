@@ -42,6 +42,12 @@ export interface UserSessionState {
   
   // Search state
   lastSearch?: string
+  
+  // Cache loading preferences
+  cacheLoading: {
+    useStaleData: boolean
+    instantLoad: boolean
+  }
 }
 
 const DEFAULT_STATE: UserSessionState = {
@@ -53,7 +59,11 @@ const DEFAULT_STATE: UserSessionState = {
     search: false
   },
   theme: 'system',
-  lastActivity: Date.now()
+  lastActivity: Date.now(),
+  cacheLoading: {
+    useStaleData: true,
+    instantLoad: true
+  }
 }
 
 const STORAGE_KEY = 'learning-notes-user-state'

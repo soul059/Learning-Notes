@@ -14,7 +14,6 @@ import {
   FileText,
   Maximize2,
   Minimize2,
-  Settings,
   Type
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -164,14 +163,6 @@ interface MarkdownViewerProps {
   onFileSelect?: (filePath: string) => void
 }
 
-// Enhanced reading experience settings
-interface ReadingSettings {
-  fontSize: 'small' | 'medium' | 'large'
-  lineHeight: 'compact' | 'normal' | 'relaxed'
-  maxWidth: 'narrow' | 'normal' | 'wide' | 'full'
-  theme: 'auto' | 'light' | 'dark' | 'sepia'
-}
-
 export function MarkdownViewer({ 
   content, 
   onContentChange, 
@@ -186,17 +177,8 @@ export function MarkdownViewer({
   const [showPRModal, setShowPRModal] = useState(false)
   const [originalContent] = useState(content)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
   const [readingTime, setReadingTime] = useState(0)
   const [wordCount, setWordCount] = useState(0)
-  
-  // Reading experience settings
-  const [readingSettings, setReadingSettings] = useState<ReadingSettings>({
-    fontSize: 'medium',
-    lineHeight: 'normal',
-    maxWidth: 'normal',
-    theme: 'auto'
-  })
   
   // GitHub integration
   const canCreatePR = useGitHub && filePath
@@ -316,16 +298,6 @@ export function MarkdownViewer({
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Reading settings */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowSettings(!showSettings)}
-              className="h-8 w-8 p-0"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-            
             {/* Fullscreen toggle */}
             <Button
               variant="ghost"
@@ -354,102 +326,8 @@ export function MarkdownViewer({
         </div>
       )}
       
-      {/* Reading settings panel */}
-      {showSettings && (
-        <div className="border-b border-gray-200 dark:border-gray-700 bg-muted/30 p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">Reading Settings</h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowSettings(false)}
-              className="h-6 w-6 p-0"
-            >
-              ×
-            </Button>
-          </div>
-          
-          <div className="grid grid-cols-4 gap-4 mt-3">
-            {/* Font size */}
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Font Size</label>
-              <select 
-                value={readingSettings.fontSize}
-                onChange={(e) => setReadingSettings(prev => ({ ...prev, fontSize: e.target.value as any }))}
-                className="w-full text-xs bg-background border border-border rounded px-2 py-1"
-              >
-                <option value="small">Small</option>
-                <option value="medium">Medium</option>
-                <option value="large">Large</option>
-              </select>
-            </div>
-            
-            {/* Line height */}
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Line Height</label>
-              <select 
-                value={readingSettings.lineHeight}
-                onChange={(e) => setReadingSettings(prev => ({ ...prev, lineHeight: e.target.value as any }))}
-                className="w-full text-xs bg-background border border-border rounded px-2 py-1"
-              >
-                <option value="compact">Compact</option>
-                <option value="normal">Normal</option>
-                <option value="relaxed">Relaxed</option>
-              </select>
-            </div>
-            
-            {/* Max width */}
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Width</label>
-              <select 
-                value={readingSettings.maxWidth}
-                onChange={(e) => setReadingSettings(prev => ({ ...prev, maxWidth: e.target.value as any }))}
-                className="w-full text-xs bg-background border border-border rounded px-2 py-1"
-              >
-                <option value="narrow">Narrow</option>
-                <option value="normal">Normal</option>
-                <option value="wide">Wide</option>
-                <option value="full">Full</option>
-              </select>
-            </div>
-            
-            {/* Theme */}
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Theme</label>
-              <select 
-                value={readingSettings.theme}
-                onChange={(e) => setReadingSettings(prev => ({ ...prev, theme: e.target.value as any }))}
-                className="w-full text-xs bg-background border border-border rounded px-2 py-1"
-              >
-                <option value="auto">Auto</option>
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-                <option value="sepia">Sepia</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-      
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className={cn(
-          "p-6 prose-custom transition-all duration-200",
-          // Dynamic max width
-          readingSettings.maxWidth === 'narrow' && "max-w-2xl mx-auto",
-          readingSettings.maxWidth === 'normal' && "max-w-4xl mx-auto", 
-          readingSettings.maxWidth === 'wide' && "max-w-6xl mx-auto",
-          readingSettings.maxWidth === 'full' && "max-w-none",
-          // Dynamic font size
-          readingSettings.fontSize === 'small' && "text-sm",
-          readingSettings.fontSize === 'medium' && "text-base",
-          readingSettings.fontSize === 'large' && "text-lg",
-          // Dynamic line height
-          readingSettings.lineHeight === 'compact' && "leading-tight",
-          readingSettings.lineHeight === 'normal' && "leading-normal",
-          readingSettings.lineHeight === 'relaxed' && "leading-relaxed",
-          // Theme variations
-          readingSettings.theme === 'sepia' && "bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-100"
-        )}>
+        <div className="p-6 prose-custom transition-all duration-200 max-w-4xl mx-auto text-base leading-normal">
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkEmoji]}
             rehypePlugins={[rehypeRaw]}

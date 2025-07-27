@@ -4,7 +4,6 @@ import {
   X, 
   Eye, 
   Code, 
-  Type, 
   FileText,
   RotateCcw,
   Check,
@@ -13,54 +12,30 @@ import {
 import { Button } from '@/components/ui/button'
 import { ThemePreview } from '@/components/ui/ThemePreview'
 import { cn } from '@/lib/utils'
-
-interface MarkdownSettings {
-  // Display settings
-  fontSize: 'small' | 'medium' | 'large'
-  lineHeight: 'compact' | 'normal' | 'relaxed'
-  maxWidth: 'narrow' | 'medium' | 'wide' | 'full'
-  
-  // Theme settings
-  codeTheme: 'auto' | 'light' | 'dark'
-  renderEmojis: boolean
-  renderMath: boolean
-  
-  // Content settings
-  showTableOfContents: boolean
-  enableMarkdownExtensions: boolean
-  renderRawHtml: boolean
-  enableSyntaxHighlighting: boolean
-  
-  // Editor settings
-  showLineNumbers: boolean
-  enableWordWrap: boolean
-  enableSpellCheck: boolean
-}
+import type { MarkdownSettings } from '@/types'
 
 interface SettingsPanelProps {
   isOpen: boolean
   onClose: () => void
+  settings: MarkdownSettings
   onSettingsChange: (settings: MarkdownSettings) => void
 }
 
 const defaultSettings: MarkdownSettings = {
   fontSize: 'medium',
-  lineHeight: 'normal',
-  maxWidth: 'medium',
+  lineHeight: 'comfortable',
+  maxWidth: 'content',
   codeTheme: 'auto',
-  renderEmojis: true,
-  renderMath: false,
-  showTableOfContents: true,
-  enableMarkdownExtensions: true,
-  renderRawHtml: true,
   enableSyntaxHighlighting: true,
   showLineNumbers: false,
-  enableWordWrap: true,
-  enableSpellCheck: true
+  enableTableOfContents: true,
+  enableMath: false,
+  enableMermaid: false,
+  enableRawHtml: true
 }
 
-export function SettingsPanel({ isOpen, onClose, onSettingsChange }: SettingsPanelProps) {
-  const [settings, setSettings] = useState<MarkdownSettings>(defaultSettings)
+export function SettingsPanel({ isOpen, onClose, settings: propsSettings, onSettingsChange }: SettingsPanelProps) {
+  const [settings, setSettings] = useState<MarkdownSettings>(propsSettings || defaultSettings)
   const [hasChanges, setHasChanges] = useState(false)
 
   // Load settings from localStorage on mount
@@ -76,6 +51,14 @@ export function SettingsPanel({ isOpen, onClose, onSettingsChange }: SettingsPan
     }
   }, [])
 
+  // Sync with props settings when they change
+  useEffect(() => {
+    if (propsSettings) {
+      setSettings(propsSettings)
+      setHasChanges(false)
+    }
+  }, [propsSettings])
+
   // Save settings to localStorage and notify parent
   const saveSettings = () => {
     localStorage.setItem('markdown-settings', JSON.stringify(settings))
@@ -87,8 +70,18 @@ export function SettingsPanel({ isOpen, onClose, onSettingsChange }: SettingsPan
     key: K,
     value: MarkdownSettings[K]
   ) => {
-    setSettings(prev => ({ ...prev, [key]: value }))
-    setHasChanges(true)
+    const newSettings = { ...settings, [key]: value }
+    setSettings(newSettings)
+    
+    // Auto-save immediately
+    try {
+      localStorage.setItem('markdown-settings', JSON.stringify(newSettings))
+    } catch (error) {
+      console.error('Failed to save settings:', error)
+    }
+    
+    onSettingsChange(newSettings)
+    setHasChanges(false)
   }
 
   const resetSettings = () => {
@@ -128,10 +121,23 @@ export function SettingsPanel({ isOpen, onClose, onSettingsChange }: SettingsPan
     <Button
       variant={selected ? "default" : "outline"}
       size="sm"
-      onClick={onClick}
+      onClick={() => {
+        onClick()
+      }}
+      onPointerDown={() => {
+        // Pointer interaction for desktop
+      }}
+      onPointerUp={() => {
+        // Pointer interaction for desktop
+      }}
       className={cn(
-        "justify-start text-xs",
-        selected && "bg-primary text-primary-foreground"
+        "justify-start text-xs cursor-pointer transition-all duration-200",
+        "hover:scale-105 active:scale-95 hover:shadow-lg", // More visible hover effects
+        "relative z-[320]", // Even higher z-index
+        "select-none user-select-none", // Prevent text selection on desktop
+        "border-2", // More prominent border
+        selected && "bg-primary text-primary-foreground border-primary",
+        !selected && "border-gray-300 hover:border-blue-500" // Clear hover state
       )}
     >
       {selected && <Check className="w-3 h-3 mr-1" />}
@@ -160,10 +166,22 @@ export function SettingsPanel({ isOpen, onClose, onSettingsChange }: SettingsPan
       <Button
         variant={checked ? "default" : "outline"}
         size="sm"
-        onClick={() => onChange(!checked)}
+        onClick={() => {
+          onChange(!checked)
+        }}
+        onPointerDown={() => {
+          // Pointer interaction for desktop
+        }}
+        onPointerUp={() => {
+          // Pointer interaction for desktop
+        }}
         className={cn(
-          "ml-3 px-3",
-          checked ? "bg-green-600 hover:bg-green-700" : ""
+          "ml-3 px-3 cursor-pointer transition-all duration-200",
+          "hover:scale-105 active:scale-95 hover:shadow-lg", // More visible hover effects
+          "relative z-[320]", // Even higher z-index
+          "select-none user-select-none", // Prevent text selection on desktop
+          "border-2", // More prominent border
+          checked ? "bg-green-600 hover:bg-green-700 border-green-600" : "border-gray-300 hover:border-blue-500"
         )}
       >
         {checked ? "On" : "Off"}
@@ -175,18 +193,25 @@ export function SettingsPanel({ isOpen, onClose, onSettingsChange }: SettingsPan
 
   return (
     <div className="fixed inset-0 z-[300] flex">
-      {/* Backdrop */}
+      {/* Backdrop - don't capture clicks, let them pass through */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[301] pointer-events-none"
+      />
+      
+      {/* Click area for closing - only on the left side */}
+      <div 
+        className="absolute inset-0 z-[301] pointer-events-auto"
         onClick={onClose}
+        style={{ right: '24rem' }} // Don't cover the panel area
       />
       
       {/* Panel */}
       <div className={cn(
-        "relative ml-auto w-full max-w-md h-full bg-background border-l border-border shadow-2xl",
-        "animate-in slide-in-from-right duration-300 ease-out"
+        "relative ml-auto w-full max-w-md h-full bg-background border-l border-border shadow-2xl z-[302]",
+        "animate-in slide-in-from-right duration-300 ease-out",
+        "pointer-events-auto" // Ensure panel can receive clicks
       )}>
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full pointer-events-auto z-[303]">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border bg-card/95 backdrop-blur-sm">
             <div className="flex items-center gap-3">
@@ -209,7 +234,8 @@ export function SettingsPanel({ isOpen, onClose, onSettingsChange }: SettingsPan
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 space-y-6 pointer-events-auto relative z-[310]"
+               onClick={(e) => e.stopPropagation()}>
             {/* Theme Settings */}
             <SettingSection title="Appearance" icon={Palette}>
               <ThemePreview />
@@ -249,8 +275,8 @@ export function SettingsPanel({ isOpen, onClose, onSettingsChange }: SettingsPan
                     />
                     <OptionButton 
                       label="Normal" 
-                      selected={settings.lineHeight === 'normal'}
-                      onClick={() => updateSetting('lineHeight', 'normal')}
+                      selected={settings.lineHeight === 'comfortable'}
+                      onClick={() => updateSetting('lineHeight', 'comfortable')}
                     />
                     <OptionButton 
                       label="Relaxed" 
@@ -270,8 +296,8 @@ export function SettingsPanel({ isOpen, onClose, onSettingsChange }: SettingsPan
                     />
                     <OptionButton 
                       label="Medium" 
-                      selected={settings.maxWidth === 'medium'}
-                      onClick={() => updateSetting('maxWidth', 'medium')}
+                      selected={settings.maxWidth === 'content'}
+                      onClick={() => updateSetting('maxWidth', 'content')}
                     />
                     <OptionButton 
                       label="Wide" 
@@ -331,53 +357,29 @@ export function SettingsPanel({ isOpen, onClose, onSettingsChange }: SettingsPan
               <ToggleSwitch
                 label="Table of Contents"
                 description="Show table of contents for headings"
-                checked={settings.showTableOfContents}
-                onChange={(checked) => updateSetting('showTableOfContents', checked)}
-              />
-
-              <ToggleSwitch
-                label="Emoji Rendering"
-                description="Convert emoji codes to emoji characters"
-                checked={settings.renderEmojis}
-                onChange={(checked) => updateSetting('renderEmojis', checked)}
+                checked={settings.enableTableOfContents}
+                onChange={(checked) => updateSetting('enableTableOfContents', checked)}
               />
 
               <ToggleSwitch
                 label="Math Rendering"
                 description="Render LaTeX math expressions"
-                checked={settings.renderMath}
-                onChange={(checked) => updateSetting('renderMath', checked)}
+                checked={settings.enableMath}
+                onChange={(checked) => updateSetting('enableMath', checked)}
+              />
+
+              <ToggleSwitch
+                label="Mermaid Diagrams"
+                description="Render Mermaid diagrams"
+                checked={settings.enableMermaid}
+                onChange={(checked) => updateSetting('enableMermaid', checked)}
               />
 
               <ToggleSwitch
                 label="Raw HTML"
                 description="Allow raw HTML in markdown"
-                checked={settings.renderRawHtml}
-                onChange={(checked) => updateSetting('renderRawHtml', checked)}
-              />
-
-              <ToggleSwitch
-                label="GitHub Extensions"
-                description="Enable GitHub-flavored markdown extensions"
-                checked={settings.enableMarkdownExtensions}
-                onChange={(checked) => updateSetting('enableMarkdownExtensions', checked)}
-              />
-            </SettingSection>
-
-            {/* Editor Settings */}
-            <SettingSection title="Editor" icon={Type}>
-              <ToggleSwitch
-                label="Word Wrap"
-                description="Wrap long lines in editor"
-                checked={settings.enableWordWrap}
-                onChange={(checked) => updateSetting('enableWordWrap', checked)}
-              />
-
-              <ToggleSwitch
-                label="Spell Check"
-                description="Enable spell checking in editor"
-                checked={settings.enableSpellCheck}
-                onChange={(checked) => updateSetting('enableSpellCheck', checked)}
+                checked={settings.enableRawHtml}
+                onChange={(checked) => updateSetting('enableRawHtml', checked)}
               />
             </SettingSection>
           </div>

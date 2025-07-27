@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import remarkGfm from 'remark-gfm'
@@ -22,6 +22,7 @@ import { CreatePullRequestModal } from '@/components/github/CreatePullRequestMod
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/contexts/ThemeProvider'
 import { useGitHub as useGitHubContext } from '@/contexts/GitHubProvider'
+import type { MarkdownSettings } from '@/types'
 
 // Light theme for syntax highlighting
 const lightCodeTheme: { [key: string]: React.CSSProperties } = {
@@ -161,6 +162,20 @@ interface MarkdownViewerProps {
   filePath?: string
   useGitHub?: boolean
   onFileSelect?: (filePath: string) => void
+  settings?: MarkdownSettings
+}
+
+const defaultSettings: MarkdownSettings = {
+  fontSize: 'medium',
+  lineHeight: 'comfortable',
+  maxWidth: 'content',
+  codeTheme: 'auto',
+  enableSyntaxHighlighting: true,
+  showLineNumbers: false,
+  enableTableOfContents: true,
+  enableMath: false,
+  enableMermaid: false,
+  enableRawHtml: true
 }
 
 export function MarkdownViewer({ 
@@ -170,7 +185,8 @@ export function MarkdownViewer({
   className,
   filePath = '',
   useGitHub = false,
-  onFileSelect
+  onFileSelect,
+  settings = defaultSettings
 }: MarkdownViewerProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(content)
@@ -184,8 +200,13 @@ export function MarkdownViewer({
   const canCreatePR = useGitHub && filePath
   const { hasWriteAccess } = useGitHubContext()
   const [copiedBlocks, setCopiedBlocks] = useState<Set<string>>(new Set())
-  const [showLineNumbers, setShowLineNumbers] = useState(false)
+  const [showLineNumbers, setShowLineNumbers] = useState(settings.showLineNumbers)
   const { theme } = useTheme()
+
+  // Sync showLineNumbers with settings
+  useEffect(() => {
+    setShowLineNumbers(settings.showLineNumbers)
+  }, [settings.showLineNumbers])
 
   // Calculate reading time and word count
   useState(() => {
@@ -327,10 +348,32 @@ export function MarkdownViewer({
       )}
       
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="p-6 prose-custom transition-all duration-200 max-w-4xl mx-auto text-base leading-normal">
+        <div 
+          className={cn(
+            "p-6 prose-custom transition-all duration-200 mx-auto",
+            // Font size
+            settings.fontSize === 'small' && "text-sm",
+            settings.fontSize === 'medium' && "text-base",
+            settings.fontSize === 'large' && "text-lg",
+            // Line height
+            settings.lineHeight === 'compact' && "leading-tight",
+            settings.lineHeight === 'comfortable' && "leading-normal",
+            settings.lineHeight === 'relaxed' && "leading-relaxed",
+            // Max width
+            settings.maxWidth === 'narrow' && "max-w-2xl",
+            settings.maxWidth === 'content' && "max-w-4xl",
+            settings.maxWidth === 'wide' && "max-w-6xl",
+            settings.maxWidth === 'full' && "max-w-none"
+          )}
+        >
           <ReactMarkdown
-            remarkPlugins={[remarkGfm, remarkEmoji]}
-            rehypePlugins={[rehypeRaw]}
+            remarkPlugins={[
+              remarkGfm, // Always include GitHub Flavored Markdown
+              remarkEmoji // Always include emoji support
+            ]}
+            rehypePlugins={[
+              ...(settings.enableRawHtml ? [rehypeRaw] : [])
+            ]}
             components={{
               pre({ children }) {
                 return <>{children}</>
@@ -421,37 +464,52 @@ export function MarkdownViewer({
                       </div>
                       
                       <div className="relative overflow-hidden">
-                        <SyntaxHighlighter
-                          style={theme === 'dark' ? customCodeTheme : lightCodeTheme}
-                          language={language}
-                          PreTag="div"
-                          showLineNumbers={showLineNumbers}
-                          showInlineLineNumbers={false}
-                          wrapLines={false}
-                          wrapLongLines={true}
-                          lineNumberStyle={{
-                            minWidth: '3rem',
-                            paddingRight: '1rem',
-                            marginRight: '1rem',
-                            color: theme === 'dark' ? 'hsl(210 20% 50%)' : 'hsl(220 8.9% 46.1%)',
-                            borderRight: `1px solid ${theme === 'dark' ? 'hsl(215 27.9% 25%)' : 'hsl(214.3 31.8% 91.4%)'}`,
-                            userSelect: 'none',
-                            fontSize: '0.75rem',
-                            opacity: 0.6,
-                            textAlign: 'right'
-                          }}
-                          customStyle={{
-                            margin: 0,
-                            fontSize: '0.875rem',
-                            lineHeight: '1.6',
-                            fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-                            background: 'transparent',
-                            padding: '1.5rem',
-                            borderRadius: '0'
-                          }}
-                        >
-                          {codeString}
-                        </SyntaxHighlighter>
+                        {settings.enableSyntaxHighlighting ? (
+                          <SyntaxHighlighter
+                            style={
+                              settings.codeTheme === 'light' ? lightCodeTheme :
+                              settings.codeTheme === 'dark' ? customCodeTheme :
+                              (theme === 'dark' ? customCodeTheme : lightCodeTheme)
+                            }
+                            language={language}
+                            PreTag="div"
+                            showLineNumbers={settings.showLineNumbers}
+                            showInlineLineNumbers={false}
+                            wrapLines={false}
+                            wrapLongLines={true}
+                            lineNumberStyle={{
+                              minWidth: '3rem',
+                              paddingRight: '1rem',
+                              marginRight: '1rem',
+                              color: theme === 'dark' ? 'hsl(210 20% 50%)' : 'hsl(220 8.9% 46.1%)',
+                              borderRight: `1px solid ${theme === 'dark' ? 'hsl(215 27.9% 25%)' : 'hsl(214.3 31.8% 91.4%)'}`,
+                              userSelect: 'none',
+                              fontSize: '0.75rem',
+                              opacity: 0.6,
+                              textAlign: 'right'
+                            }}
+                            customStyle={{
+                              margin: 0,
+                              fontSize: settings.fontSize === 'small' ? '0.75rem' : 
+                                       settings.fontSize === 'large' ? '1rem' : '0.875rem',
+                              lineHeight: settings.lineHeight === 'compact' ? '1.4' :
+                                         settings.lineHeight === 'relaxed' ? '1.8' : '1.6',
+                              fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                              background: 'transparent',
+                              padding: '1.5rem',
+                              borderRadius: '0'
+                            }}
+                          >
+                            {codeString}
+                          </SyntaxHighlighter>
+                        ) : (
+                          <pre className={cn(
+                            "p-6 text-sm font-mono bg-transparent overflow-x-auto",
+                            "whitespace-pre-wrap"
+                          )}>
+                            <code>{codeString}</code>
+                          </pre>
+                        )}
                       </div>
                     </div>
                   )

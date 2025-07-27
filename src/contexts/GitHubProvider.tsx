@@ -250,6 +250,16 @@ export function GitHubProvider({ children, config = defaultGitHubConfig }: GitHu
 
     try {
       console.log('🔍 Expanding folder:', folderPath)
+      
+      // Check if folder contents are already cached
+      const folderCacheKey = CacheService.folderContentsKey(currentConfig.owner, currentConfig.repo, folderPath, currentConfig.branch)
+      const cachedContents = CacheService.get<any[]>(folderCacheKey)
+      
+      if (cachedContents) {
+        console.log('💾 Folder contents cache hit:', folderPath)
+        return cachedContents
+      }
+      
       const contents = await githubService.getFolderContents(folderPath)
       console.log('📁 Folder contents received:', { folderPath, count: contents.length, contents: contents.map(c => c.name) })
       
@@ -262,6 +272,9 @@ export function GitHubProvider({ children, config = defaultGitHubConfig }: GitHu
         lastModified: new Date(),
         source: 'github' as const
       }))
+
+      // Cache folder contents for 30 minutes
+      CacheService.set(folderCacheKey, children, 30 * 60 * 1000)
 
       // Update the files list to include newly discovered files
       setFiles(prevFiles => {
@@ -329,8 +342,23 @@ export function GitHubProvider({ children, config = defaultGitHubConfig }: GitHu
       throw new Error('GitHub service not initialized')
     }
     
+    // Check cache first
+    const cacheKey = CacheService.fileContentKey(currentConfig.owner, currentConfig.repo, path, currentConfig.branch)
+    const cachedContent = CacheService.get<string>(cacheKey)
+    
+    if (cachedContent) {
+      console.log('💾 File content cache hit:', path)
+      return cachedContent
+    }
+    
     try {
-      return await githubService.getFileContent(path)
+      console.log('📁 Fetching file content from GitHub:', path)
+      const content = await githubService.getFileContent(path)
+      
+      // Cache file content for 10 minutes (allows for quick navigation while still being fresh)
+      CacheService.set(cacheKey, content, 10 * 60 * 1000)
+      
+      return content
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to fetch file content')
     }

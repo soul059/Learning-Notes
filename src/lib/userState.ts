@@ -72,14 +72,53 @@ export class UserStateService {
         lastActivity: Date.now()
       }
       
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedState))
+      const serializedState = JSON.stringify(updatedState)
+      
+      // Check if state has actually changed to avoid unnecessary writes
+      const existing = localStorage.getItem(STORAGE_KEY)
+      if (existing === serializedState) {
+        // console.log('⏭️ User state unchanged, skipping save')
+        return
+      }
+      
+      localStorage.setItem(STORAGE_KEY, serializedState)
+      
       console.log('💾 User state saved successfully:', {
         key: STORAGE_KEY,
         updatedFields: Object.keys(state),
-        fullState: updatedState
+        stateSize: serializedState.length,
+        timestamp: new Date().toISOString()
       })
+      
+      // Verify the save worked
+      const verification = localStorage.getItem(STORAGE_KEY)
+      if (!verification) {
+        console.error('❌ User state save verification failed!')
+        this.testStorage()
+      } else if (verification !== serializedState) {
+        console.warn('⚠️ User state save verification mismatch!')
+      }
     } catch (error) {
       console.error('❌ Failed to save user state:', error)
+      this.testStorage()
+      
+      // Try to recover by clearing potentially corrupted state
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        console.log('📦 Storage quota exceeded, attempting cleanup...')
+        this.clearState()
+        // Try saving again with just the essential data
+        try {
+          const essentialState = {
+            currentFile: state.currentFile || this.loadState().currentFile,
+            theme: state.theme || this.loadState().theme,
+            lastActivity: Date.now()
+          }
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...DEFAULT_STATE, ...essentialState }))
+          console.log('✅ Essential state saved after cleanup')
+        } catch (retryError) {
+          console.error('❌ Failed to save even essential state:', retryError)
+        }
+      }
     }
   }
   
@@ -296,6 +335,118 @@ export class UserStateService {
       return works
     } catch (error) {
       console.error('🧪 localStorage test FAILED:', error)
+      return false
+    }
+  }
+
+  /**
+   * Convenience method to set current file
+   */
+  static setLastFile(filePath: string): void {
+    const state = this.loadState()
+    state.currentFile = filePath
+    this.saveState(state)
+  }
+
+  /**
+   * Get storage usage statistics
+   */
+  static getStorageStats(): {
+    size: number
+    maxSize: number
+    usage: number
+    itemCount: number
+  } {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      const size = stored ? new Blob([stored]).size : 0
+      
+      // Estimate localStorage quota (usually 5-10MB per origin)
+      const maxSize = 5 * 1024 * 1024 // 5MB estimate
+      const usage = (size / maxSize) * 100
+      
+      // Count all learning-notes items in localStorage
+      let itemCount = 0
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith('learning-notes')) {
+          itemCount++
+        }
+      }
+      
+      return { size, maxSize, usage, itemCount }
+    } catch (error) {
+      console.error('Failed to get storage stats:', error)
+      return { size: 0, maxSize: 0, usage: 0, itemCount: 0 }
+    }
+  }
+
+  /**
+   * Optimize storage by removing unnecessary data
+   */
+  static optimizeStorage(): void {
+    try {
+      const state = this.loadState()
+      
+      // Clean up expanded folders - remove duplicates and sort
+      const uniqueFolders = [...new Set(state.expandedFolders)].sort()
+      
+      // Clean up scroll position - only keep if it's for current file
+      const cleanScrollPosition = state.scrollPosition.file === state.currentFile 
+        ? state.scrollPosition 
+        : { position: 0 }
+      
+      const optimizedState: UserSessionState = {
+        ...state,
+        expandedFolders: uniqueFolders,
+        scrollPosition: cleanScrollPosition,
+        lastActivity: Date.now()
+      }
+      
+      this.saveState(optimizedState)
+      console.log('🧹 Storage optimized')
+    } catch (error) {
+      console.error('❌ Storage optimization failed:', error)
+    }
+  }
+
+  /**
+   * Backup state to a JSON string for export
+   */
+  static backupState(): string {
+    try {
+      const state = this.loadState()
+      return JSON.stringify({
+        ...state,
+        backupTimestamp: Date.now(),
+        version: '1.0'
+      }, null, 2)
+    } catch (error) {
+      console.error('❌ State backup failed:', error)
+      return '{}'
+    }
+  }
+
+  /**
+   * Restore state from backup JSON string
+   */
+  static restoreState(backupJson: string): boolean {
+    try {
+      const backup = JSON.parse(backupJson)
+      if (backup.version && backup.lastActivity) {
+        // Remove backup metadata
+        delete backup.backupTimestamp
+        delete backup.version
+        
+        this.importState(backup)
+        console.log('✅ State restored from backup')
+        return true
+      } else {
+        console.error('❌ Invalid backup format')
+        return false
+      }
+    } catch (error) {
+      console.error('❌ State restore failed:', error)
       return false
     }
   }

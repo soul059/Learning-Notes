@@ -12,7 +12,11 @@ interface StatusBarProps {
 export function StatusBar({ className, currentFile }: StatusBarProps) {
   const { isConnected, files, isLoading, config } = useGitHub()
   const [lastSync, setLastSync] = useState<Date | null>(null)
-  const [cacheStats, setCacheStats] = useState({ persistent: 0, session: 0, totalSize: 0 })
+  const [cacheStats, setCacheStats] = useState({
+    memoryCache: { size: 0, maxSize: 0 },
+    localStorage: { size: 0, itemCount: 0 },
+    sessionStorage: { size: 0, itemCount: 0 }
+  })
   const [networkStatus, setNetworkStatus] = useState(navigator.onLine)
 
   // Update cache stats periodically
@@ -85,9 +89,9 @@ export function StatusBar({ className, currentFile }: StatusBarProps) {
       {/* Right side - Status indicators */}
       <div className="flex items-center gap-4">
         {/* Cache status */}
-        <div className="flex items-center gap-1" title={`Cache: ${cacheStats.persistent + cacheStats.session} items (${formatFileSize(cacheStats.totalSize)})`}>
+        <div className="flex items-center gap-1" title={`Cache: ${cacheStats.localStorage.itemCount + cacheStats.sessionStorage.itemCount} items (${formatFileSize(cacheStats.localStorage.size + cacheStats.sessionStorage.size)})`}>
           <Database className="w-3 h-3" />
-          <span>{formatFileSize(cacheStats.totalSize)}</span>
+          <span>{formatFileSize(cacheStats.localStorage.size + cacheStats.sessionStorage.size)}</span>
         </div>
 
         {/* Last sync */}

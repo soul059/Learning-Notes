@@ -180,33 +180,6 @@ export class CacheService {
   }
 
   /**
-   * Get cache statistics
-   */
-  static getStats(): { persistent: number; session: number; totalSize: number } {
-    const persistentKeys = Object.keys(localStorage).filter(key => key.startsWith(this.PREFIX))
-    const sessionKeys = Object.keys(sessionStorage).filter(key => key.startsWith(this.PREFIX))
-    
-    let totalSize = 0
-    
-    // Calculate storage size
-    persistentKeys.forEach(key => {
-      const item = localStorage.getItem(key)
-      if (item) totalSize += item.length
-    })
-    
-    sessionKeys.forEach(key => {
-      const item = sessionStorage.getItem(key)
-      if (item) totalSize += item.length
-    })
-
-    return {
-      persistent: persistentKeys.length,
-      session: sessionKeys.length,
-      totalSize
-    }
-  }
-
-  /**
    * Generate cache key for GitHub file content
    */
   static fileContentKey(owner: string, repo: string, path: string, branch: string = 'main'): string {
@@ -232,6 +205,220 @@ export class CacheService {
    */
   static repositoryKey(owner: string, repo: string): string {
     return `repository:${owner}/${repo}`
+  }
+
+  /**
+   * Generate cache key for folder contents
+   */
+  static folderContentsKey(owner: string, repo: string, folderPath: string, branch: string = 'main'): string {
+    return `folder-contents:${owner}/${repo}:${branch}:${folderPath}`
+  }
+
+  /**
+   * Generate cache key for search results
+   */
+  static searchKey(query: string, source: string = 'all'): string {
+    return `search:${source}:${query.toLowerCase().replace(/\s+/g, '-')}`
+  }
+
+  /**
+   * Generate cache key for GitHub commits
+   */
+  static commitsKey(owner: string, repo: string, branch: string = 'main'): string {
+    return `commits:${owner}/${repo}:${branch}`
+  }
+
+  /**
+   * Generate cache key for user permissions
+   */
+  static permissionsKey(owner: string, repo: string, user?: string): string {
+    return `permissions:${owner}/${repo}:${user || 'anonymous'}`
+  }
+
+  /**
+   * Generate cache key for file metadata
+   */
+  static fileMetaKey(owner: string, repo: string, path: string, branch: string = 'main'): string {
+    return `file-meta:${owner}/${repo}:${branch}:${path}`
+  }
+
+  /**
+   * Bulk cache operation - set multiple items at once
+   */
+  static setMultiple<T>(items: Array<{ key: string; data: T; ttl?: number; persistent?: boolean }>): void {
+    const failed: string[] = []
+    
+    items.forEach(({ key, data, ttl = this.DEFAULT_TTL, persistent = true }) => {
+      try {
+        this.set(key, data, ttl, persistent)
+      } catch (error) {
+        failed.push(key)
+        console.warn(`Failed to cache item: ${key}`, error)
+      }
+    })
+    
+    if (failed.length > 0) {
+      console.warn(`Failed to cache ${failed.length} items:`, failed)
+    }
+  }
+
+  /**
+   * Bulk cache operation - get multiple items at once
+   */
+  static getMultiple<T>(keys: string[], persistent: boolean = true): Record<string, T | null> {
+    const results: Record<string, T | null> = {}
+    
+    keys.forEach(key => {
+      results[key] = this.get<T>(key, persistent)
+    })
+    
+    return results
+  }
+
+  /**
+   * Get cache statistics
+   */
+  static getStats(): {
+    memoryCache: { size: number; maxSize: number }
+    localStorage: { size: number; itemCount: number }
+    sessionStorage: { size: number; itemCount: number }
+  } {
+    // Memory cache stats
+    const memorySize = this.memoryCache.size
+    const maxMemorySize = this.MEMORY_CACHE_SIZE
+
+    // Storage stats
+    let localSize = 0
+    let localCount = 0
+    let sessionSize = 0
+    let sessionCount = 0
+
+    try {
+      // Count localStorage items
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key?.startsWith(this.PREFIX)) {
+          localCount++
+          const value = localStorage.getItem(key)
+          if (value) localSize += new Blob([value]).size
+        }
+      }
+
+      // Count sessionStorage items
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key?.startsWith(this.PREFIX)) {
+          sessionCount++
+          const value = sessionStorage.getItem(key)
+          if (value) sessionSize += new Blob([value]).size
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to get cache stats:', error)
+    }
+
+    return {
+      memoryCache: { size: memorySize, maxSize: maxMemorySize },
+      localStorage: { size: localSize, itemCount: localCount },
+      sessionStorage: { size: sessionSize, itemCount: sessionCount }
+    }
+  }
+
+  /**
+   * Optimize cache by removing old/large items
+   */
+  static optimizeCache(): void {
+    console.log('🧹 Optimizing cache...')
+    
+    // Clear expired items first
+    this.clearExpired()
+    
+    // Clear memory cache if it's getting too large
+    if (this.memoryCache.size > this.MEMORY_CACHE_SIZE * 0.8) {
+      console.log('🗑️ Clearing memory cache due to size')
+      this.memoryCache.clear()
+    }
+    
+    // Check storage usage and clean if needed
+    const stats = this.getStats()
+    console.log('📊 Cache stats:', stats)
+    
+    // If localStorage is getting large, remove oldest items
+    if (stats.localStorage.size > 2 * 1024 * 1024) { // 2MB threshold
+      this.clearOldestItems('localStorage', 10)
+    }
+    
+    if (stats.sessionStorage.size > 1 * 1024 * 1024) { // 1MB threshold
+      this.clearOldestItems('sessionStorage', 5)
+    }
+  }
+
+  /**
+   * Clear oldest cache items from storage
+   */
+  private static clearOldestItems(storageType: 'localStorage' | 'sessionStorage', count: number): void {
+    const storage = storageType === 'localStorage' ? localStorage : sessionStorage
+    const items: Array<{ key: string; timestamp: number }> = []
+    
+    try {
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i)
+        if (key?.startsWith(this.PREFIX)) {
+          const value = storage.getItem(key)
+          if (value) {
+            try {
+              const item = JSON.parse(value)
+              if (item.timestamp) {
+                items.push({ key, timestamp: item.timestamp })
+              }
+            } catch {
+              // Invalid format, mark for removal
+              items.push({ key, timestamp: 0 })
+            }
+          }
+        }
+      }
+      
+      // Sort by timestamp (oldest first) and remove oldest items
+      items.sort((a, b) => a.timestamp - b.timestamp)
+      const toRemove = items.slice(0, count)
+      
+      toRemove.forEach(({ key }) => {
+        storage.removeItem(key)
+        console.log(`🗑️ Removed old cache item: ${key.replace(this.PREFIX, '')}`)
+      })
+      
+      console.log(`✅ Cleaned ${toRemove.length} old items from ${storageType}`)
+    } catch (error) {
+      console.error(`❌ Failed to clean ${storageType}:`, error)
+    }
+  }
+
+  /**
+   * Preload cache with commonly accessed items
+   */
+  static preloadCache(keys: string[]): Promise<void> {
+    return new Promise((resolve) => {
+      const loadedCount = { value: 0 }
+      
+      keys.forEach(key => {
+        // Try to get item to trigger memory cache loading
+        const item = this.get(key)
+        if (item) {
+          console.log(`💾 Preloaded: ${key}`)
+        }
+        
+        loadedCount.value++
+        if (loadedCount.value === keys.length) {
+          console.log(`✅ Preloaded ${keys.length} cache items`)
+          resolve()
+        }
+      })
+      
+      if (keys.length === 0) {
+        resolve()
+      }
+    })
   }
 }
 

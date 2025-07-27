@@ -61,3 +61,21 @@ export interface AppSettings {
   showLineNumbers: boolean
   fontSize: 'sm' | 'base' | 'lg'
 }
+
+export interface MarkdownSettings {
+  // Display settings
+  fontSize: 'small' | 'medium' | 'large'
+  lineHeight: 'compact' | 'comfortable' | 'relaxed'
+  maxWidth: 'narrow' | 'content' | 'wide' | 'full'
+  
+  // Code highlighting
+  codeTheme: 'auto' | 'light' | 'dark'
+  enableSyntaxHighlighting: boolean
+  showLineNumbers: boolean
+  
+  // Content features
+  enableTableOfContents: boolean
+  enableMath: boolean
+  enableMermaid: boolean
+  enableRawHtml: boolean
+}

@@ -19,6 +19,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { StatusBar } from '@/components/ui/StatusBar'
 import { useUserState } from '@/hooks/useUserState'
 import { cn } from '@/lib/utils'
+import type { MarkdownSettings } from '@/types'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -26,9 +27,19 @@ interface LayoutProps {
   onFileSelect?: (path: string) => void
   isLoading?: boolean
   currentFile?: string
+  markdownSettings?: MarkdownSettings
+  onMarkdownSettingsChange?: (settings: MarkdownSettings) => void
 }
 
-export function Layout({ children, sidebar, onFileSelect, isLoading, currentFile }: LayoutProps) {
+export function Layout({ 
+  children, 
+  sidebar, 
+  onFileSelect, 
+  isLoading, 
+  currentFile, 
+  markdownSettings, 
+  onMarkdownSettingsChange 
+}: LayoutProps) {
   const userState = useUserState()
   
   // Initialize panel states from user state
@@ -37,6 +48,19 @@ export function Layout({ children, sidebar, onFileSelect, isLoading, currentFile
   const [githubPanelOpen, setGithubPanelOpen] = useState(userState.panels.github)
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(userState.panels.settings)
   const { addToast } = useToast()
+
+  // Handle settings changes
+  const handleSettingsChange = (settings: MarkdownSettings) => {
+    if (onMarkdownSettingsChange) {
+      onMarkdownSettingsChange(settings)
+    }
+    addToast({
+      title: 'Settings saved',
+      description: 'Markdown view settings have been updated',
+      type: 'success',
+      duration: 2000
+    })
+  }
   
   // Update user state when panel states change
   useEffect(() => {
@@ -291,14 +315,19 @@ export function Layout({ children, sidebar, onFileSelect, isLoading, currentFile
       <SettingsPanel 
         isOpen={settingsPanelOpen}
         onClose={() => setSettingsPanelOpen(false)}
-        onSettingsChange={() => {
-          addToast({
-            title: 'Settings saved',
-            description: 'Markdown view settings have been updated',
-            type: 'success',
-            duration: 2000
-          })
+        settings={markdownSettings || {
+          fontSize: 'medium',
+          lineHeight: 'comfortable',
+          maxWidth: 'content',
+          codeTheme: 'auto',
+          enableSyntaxHighlighting: true,
+          showLineNumbers: false,
+          enableTableOfContents: true,
+          enableMath: false,
+          enableMermaid: false,
+          enableRawHtml: true
         }}
+        onSettingsChange={handleSettingsChange}
       />
     </div>
   )

@@ -338,15 +338,15 @@ export function GitHubPanel({ isOpen, onClose }: GitHubPanelProps) {
                   <div className="p-3 bg-card rounded-lg border">
                     <div className="flex items-center justify-between mb-2">
                       <div className="text-xs text-muted-foreground">
-                        {cacheStats.persistent + cacheStats.session} items cached
+                        {cacheStats.localStorage.itemCount + cacheStats.sessionStorage.itemCount} items cached
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {formatBytes(cacheStats.totalSize)}
+                        {formatBytes(cacheStats.localStorage.size + cacheStats.sessionStorage.size)}
                       </div>
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground mb-3">
-                      <span>Persistent: {cacheStats.persistent}</span>
-                      <span>Session: {cacheStats.session}</span>
+                      <span>Persistent: {cacheStats.localStorage.itemCount}</span>
+                      <span>Session: {cacheStats.sessionStorage.itemCount}</span>
                     </div>
                     <Button
                       variant="outline"

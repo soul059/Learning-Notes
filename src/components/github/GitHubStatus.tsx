@@ -15,9 +15,6 @@ export function GitHubStatus({ className }: GitHubStatusProps) {
   const { config, isConnected, hasWriteAccess, error, githubService } = useGitHub()
   const { isAuthenticated, logout } = useGitHubAuth()
 
-  // Debug logging
-  console.log('GitHubStatus render:', { isAuthenticated, isConnected, hasWriteAccess, error })
-
   const handleClearCache = () => {
     if (githubService) {
       githubService.clearCache()
@@ -74,8 +71,8 @@ export function GitHubStatus({ className }: GitHubStatusProps) {
         {isConnected && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Database className="w-3 h-3" />
-            <span>{cacheStats.persistent + cacheStats.session} cached</span>
-            <span>({formatBytes(cacheStats.totalSize)})</span>
+            <span>{cacheStats.localStorage.itemCount + cacheStats.sessionStorage.itemCount} cached</span>
+            <span>({formatBytes(cacheStats.localStorage.size + cacheStats.sessionStorage.size)})</span>
             <Button
               variant="ghost"
               size="sm"

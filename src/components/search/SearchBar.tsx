@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { useGitHub } from '@/contexts/GitHubProvider'
 import { loadMarkdownFile } from '@/lib/fileLoader'
 import { UserStateService } from '@/lib/userState'
+import { CacheService } from '@/lib/cache'
 
 interface SearchResult {
   id: string
@@ -244,15 +245,25 @@ export function SearchBar({ onFileSelect, onClose, className }: SearchBarProps) 
   )
 }
 
-// Search implementation
+// Search implementation with caching
 async function searchInFiles(
   query: string, 
   availableFiles: any[], 
   isConnected: boolean, 
   getFileContent: (path: string) => Promise<string>
 ): Promise<SearchResult[]> {
-  const results: SearchResult[] = []
   const searchTerm = query.toLowerCase()
+  const cacheKey = CacheService.searchKey(query, isConnected ? 'github' : 'local')
+  
+  // Check cache first
+  const cachedResults = CacheService.get<SearchResult[]>(cacheKey)
+  if (cachedResults) {
+    console.log('🎯 Search cache hit for:', query)
+    return cachedResults
+  }
+
+  console.log('🔍 Performing fresh search for:', query)
+  const results: SearchResult[] = []
 
   // Get all searchable files - prioritize GitHub files if connected, fallback to local
   const filesToSearch = isConnected && availableFiles.length > 0 
@@ -272,13 +283,22 @@ async function searchInFiles(
       let filePath: string
       
       if (isConnected && file.path) {
-        // GitHub file
+        // GitHub file - use file content caching
         filePath = file.path
-        try {
-          content = await getFileContent(file.path)
-        } catch (error) {
-          console.warn('Failed to get content for:', file.path, error)
-          continue
+        const fileContentKey = CacheService.fileContentKey('user', 'repo', file.path)
+        
+        let cachedContent = CacheService.get<string>(fileContentKey)
+        if (cachedContent) {
+          content = cachedContent
+        } else {
+          try {
+            content = await getFileContent(file.path)
+            // Cache file content for 10 minutes
+            CacheService.set(fileContentKey, content, 10 * 60 * 1000)
+          } catch (error) {
+            console.warn('Failed to get content for:', file.path, error)
+            continue
+          }
         }
       } else {
         // Local file
@@ -366,7 +386,12 @@ async function searchInFiles(
   }
 
   // Sort by relevance (number of matches)
-  return results.sort((a, b) => b.matches - a.matches)
+  const sortedResults = results.sort((a, b) => b.matches - a.matches)
+  
+  // Cache results for 5 minutes
+  CacheService.set(cacheKey, sortedResults, 5 * 60 * 1000)
+  
+  return sortedResults
 }
 
 // Fallback function for local files when GitHub is not connected

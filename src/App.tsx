@@ -8,11 +8,25 @@ import { ToastProvider } from '@/components/ui/Toast'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { FullPageLoading } from '@/components/ui/LoadingSpinner'
 import { UserStateDebug } from '@/components/ui/UserStateDebug'
+import { CacheDebug } from '@/components/ui/CacheDebug'
 import { loadMarkdownFile, normalizeFilePath } from '@/lib/fileLoader'
 import { useFileDiscovery } from '@/hooks/useFileDiscovery'
 import { useUserState, useScrollRestore } from '@/hooks/useUserState'
 import { Button } from '@/components/ui/button'
-import type { FileSystemItem } from '@/types'
+import { CacheService } from '@/lib/cache'
+import type { FileSystemItem, MarkdownSettings } from '@/types'
+const defaultMarkdownSettings: MarkdownSettings = {
+  fontSize: 'medium',
+  lineHeight: 'comfortable',
+  maxWidth: 'content',
+  codeTheme: 'auto',
+  enableSyntaxHighlighting: true,
+  showLineNumbers: false,
+  enableTableOfContents: true,
+  enableMath: false,
+  enableMermaid: false,
+  enableRawHtml: true
+}
 
 // Convert flat file paths to hierarchical tree structure
 function buildFileTree(files: string[]): FileSystemItem[] {
@@ -124,8 +138,39 @@ function AppContent() {
   const [markdownContent, setMarkdownContent] = useState(sampleMarkdown)
   const [loading, setLoading] = useState(false)
   
+  // Markdown settings state
+  const [markdownSettings, setMarkdownSettings] = useState<MarkdownSettings>(() => {
+    // Load settings from localStorage on startup
+    const saved = localStorage.getItem('markdown-settings')
+    if (saved) {
+      try {
+        return { ...defaultMarkdownSettings, ...JSON.parse(saved) }
+      } catch (error) {
+        console.error('Failed to load markdown settings:', error)
+        return defaultMarkdownSettings
+      }
+    }
+    return defaultMarkdownSettings
+  })
+  
   // Scroll restoration for current file
   useScrollRestore(selectedFile)
+
+  // Handle markdown settings changes
+  const handleMarkdownSettingsChange = (settings: MarkdownSettings) => {
+    setMarkdownSettings(settings)
+    localStorage.setItem('markdown-settings', JSON.stringify(settings))
+    console.log('💾 Markdown settings updated:', settings)
+  }
+  
+  // Initialize cache optimization on app start
+  useEffect(() => {
+    // Run cache optimization on startup
+    setTimeout(() => {
+      CacheService.optimizeCache()
+      console.log('🚀 App started with cache optimization')
+    }, 1000) // Delay to not block initial render
+  }, [])
   
   // Get GitHub context
   const { isConnected, fileTree: githubFileTree, files: githubFiles, loadFiles, error, githubService, config } = useGitHub()
@@ -437,6 +482,8 @@ Please check if the file exists and try again.`)
         onFileSelect={handleFileSelect}
         isLoading={loading}
         currentFile={selectedFile}
+        markdownSettings={markdownSettings}
+        onMarkdownSettingsChange={handleMarkdownSettingsChange}
       >
         {loading ? (
           <div className="flex items-center justify-center h-full">
@@ -450,12 +497,18 @@ Please check if the file exists and try again.`)
             filePath={selectedFile}
             useGitHub={useGitHubFiles}
             onFileSelect={handleFileSelect}
+            settings={markdownSettings}
           />
         )}
       </Layout>
       
-      {/* Debug panel in development */}
-      {import.meta.env.DEV && <UserStateDebug />}
+      {/* Debug panels in development */}
+      {import.meta.env.DEV && (
+        <>
+          <UserStateDebug />
+          <CacheDebug />
+        </>
+      )}
     </div>
   )
 }

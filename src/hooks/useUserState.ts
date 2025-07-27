@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { UserStateService } from '@/lib/userState'
 import type { UserSessionState } from '@/lib/userState'
 
@@ -6,17 +6,36 @@ export function useUserState() {
   const [state, setState] = useState<UserSessionState>(() => 
     UserStateService.loadState()
   )
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const lastSaveRef = useRef<string>('')
+
+  // Debounced save function to prevent excessive localStorage writes
+  const debouncedSave = useCallback((stateToSave: UserSessionState) => {
+    const serialized = JSON.stringify(stateToSave)
+    
+    // Skip if state hasn't actually changed
+    if (serialized === lastSaveRef.current) {
+      return
+    }
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      UserStateService.saveState(stateToSave)
+      lastSaveRef.current = serialized
+    }, 100) // 100ms debounce
+  }, [])
   
   // Update state and persist to localStorage
   const updateState = useCallback((updates: Partial<UserSessionState>) => {
     setState(prev => {
       const newState = { ...prev, ...updates }
-      // Save the complete new state, not just updates
-      UserStateService.saveState(newState)
-      console.log('💾 Saving user state:', newState)
+      debouncedSave(newState)
       return newState
     })
-  }, [])
+  }, [debouncedSave])
   
   // Individual state setters - simplified to only use updateState
   const setCurrentFile = useCallback((filePath: string) => {
@@ -85,15 +104,28 @@ export function useUserState() {
       UserStateService.saveState({ lastActivity: Date.now() })
     }, 30000) // Save activity every 30 seconds
     
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+      // Clear any pending save timeout on unmount
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
   }, [])
-  
-  // Load state on mount
+
+  // Load state on mount and set up periodic optimization
   useEffect(() => {
     const savedState = UserStateService.loadState()
     setState(savedState)
+    
+    // Optimize storage periodically
+    const optimizeInterval = setInterval(() => {
+      UserStateService.optimizeStorage()
+    }, 5 * 60 * 1000) // Every 5 minutes
+    
+    return () => clearInterval(optimizeInterval)
   }, [])
-  
+
   return {
     // State
     ...state,

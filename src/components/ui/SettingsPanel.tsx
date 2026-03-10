@@ -81,7 +81,6 @@ export function SettingsPanel({ isOpen, onClose, settings: propsSettings, onSett
     }
     
     onSettingsChange(newSettings)
-    setHasChanges(false)
   }
 
   const resetSettings = () => {

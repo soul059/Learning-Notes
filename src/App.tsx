@@ -160,16 +160,13 @@ function AppContent() {
   const handleMarkdownSettingsChange = (settings: MarkdownSettings) => {
     setMarkdownSettings(settings)
     localStorage.setItem('markdown-settings', JSON.stringify(settings))
-    console.log('💾 Markdown settings updated:', settings)
   }
   
   // Initialize cache optimization on app start
   useEffect(() => {
-    // Run cache optimization on startup
     setTimeout(() => {
       CacheService.optimizeCache()
-      console.log('🚀 App started with cache optimization')
-    }, 1000) // Delay to not block initial render
+    }, 1000)
   }, [])
   
   // Get GitHub context
@@ -181,34 +178,10 @@ function AppContent() {
   // Determine which files and tree to use - FORCE GitHub when connected
   const useGitHubFiles = isConnected
   const fileTree = useGitHubFiles ? githubFileTree : buildFileTree(localFiles)
-
-  // Debug logging
-  useEffect(() => {
-    console.log('GitHub Status:', { 
-      isConnected, 
-      githubFilesCount: githubFiles.length, 
-      githubFileTree: githubFileTree.length,
-      error,
-      useGitHubFiles,
-      lazyLoadingActive: isConnected
-    })
-    if (githubFiles.length > 0) {
-      console.log('📂 GitHub files with content:', githubFiles.filter(f => f.content).map(f => f.path))
-      console.log('📄 GitHub files without content:', githubFiles.filter(f => !f.content).map(f => f.path))
-      console.log('🌳 Current file tree structure:', githubFileTree)
-    }
-    if (githubFileTree.length > 0) {
-      console.log('GitHub file tree (lazy):', githubFileTree)
-    }
-  }, [isConnected, githubFiles, githubFileTree, error, useGitHubFiles])
   
   // Sync selectedFile with user state currentFile
   useEffect(() => {
     if (userState.currentFile && userState.currentFile !== selectedFile) {
-      console.log('🔄 Syncing selectedFile with user state:', { 
-        userStateFile: userState.currentFile, 
-        currentSelectedFile: selectedFile 
-      })
       setSelectedFile(userState.currentFile)
     }
   }, [userState.currentFile, selectedFile])
@@ -216,7 +189,6 @@ function AppContent() {
   // Load GitHub files when connected
   useEffect(() => {
     if (isConnected && githubFileTree.length === 0) {
-      console.log('Connected to GitHub, loading lazy file structure...')
       loadFiles()
     }
   }, [isConnected, loadFiles, githubFileTree.length])
@@ -224,21 +196,15 @@ function AppContent() {
   // Watch for repository configuration changes
   useEffect(() => {
     if (config && githubService) {
-      console.log('🔄 Repository configuration changed:', config)
-      
-      // Check if current file exists in the new repository
       const currentFile = userState.currentFile
       if (currentFile && githubFiles.length > 0) {
         const fileExists = githubFiles.some((f: any) => f.path === currentFile)
         if (!fileExists) {
-          console.log('📂 Current file does not exist in new repository, clearing:', currentFile)
           userState.setCurrentFile('')
           setSelectedFile('')
           setMarkdownContent(sampleMarkdown)
         }
       } else {
-        // Reset current file when repository changes if no files loaded yet
-        console.log('📂 Repository changed, clearing current file')
         setSelectedFile('')
         setMarkdownContent(sampleMarkdown)
       }
@@ -248,42 +214,34 @@ function AppContent() {
   // Update default file when GitHub files are loaded or repository changes
   useEffect(() => {
     if (useGitHubFiles && githubFiles.length > 0) {
-      // First check if user has a previously selected file that exists in the current repo
       const savedFile = userState.currentFile
       const savedFileExists = savedFile && githubFiles.some((f: any) => f.path === savedFile)
       
       if (savedFileExists) {
-        console.log('🔄 Restoring user\'s last selected file:', savedFile)
         setSelectedFile(savedFile)
         handleFileSelect(savedFile)
         return
       }
       
-      // Try to find README.md first, then any markdown file
       const readmeFile = githubFiles.find((f: any) => 
         f.name.toLowerCase() === 'readme.md' || f.path.toLowerCase() === 'readme.md'
       )
       const firstMarkdownFile = githubFiles.find((f: any) => f.name.endsWith('.md'))
       const defaultFile = readmeFile ? readmeFile.path : (firstMarkdownFile ? firstMarkdownFile.path : githubFiles[0].path)
       
-      console.log('🏠 Setting default file from GitHub:', { defaultFile, totalFiles: githubFiles.length, repo: `${config.owner}/${config.repo}` })
       setSelectedFile(defaultFile)
       handleFileSelect(defaultFile)
     } else if (!useGitHubFiles && localFiles.length > 0) {
-      // For local files, check for saved file first
       const savedFile = userState.currentFile
       const savedFileExists = savedFile && localFiles.includes(savedFile)
       
       if (savedFileExists) {
-        console.log('🔄 Restoring user\'s last selected local file:', savedFile)
         setSelectedFile(savedFile)
         handleFileSelect(savedFile)
         return
       }
       
-      // Default to welcome/home.md
       const welcomeHome = 'welcome/home.md'
-      console.log('🏠 Setting default file from local:', welcomeHome)
       setSelectedFile(welcomeHome)
       handleFileSelect(welcomeHome)
     }
@@ -389,27 +347,18 @@ Please check if the file exists and try again.`)
 
   const handleContentChange = (newContent: string) => {
     setMarkdownContent(newContent)
-    // TODO: Save content to file
   }
 
-  const handleCreateFile = (parentPath: string) => {
+  const handleCreateFile = (_parentPath: string) => {
     // TODO: Implement file creation
-    console.log('Create file in:', parentPath)
   }
 
-  const handleCreateFolder = (parentPath: string) => {
+  const handleCreateFolder = (_parentPath: string) => {
     // TODO: Implement folder creation
-    console.log('Create folder in:', parentPath)
   }
 
   const handleCollapseAll = () => {
-    // Force re-render of the file tree to show collapsed state
-    // This will work in combination with the FileTree component's handleCollapseAll
-    console.log('🗂️ Collapsing all folders')
-    
-    // Force a re-render by triggering a small state change
-    // The FileTree component will handle the actual collapsing via GitHub context
-    setSelectedFile(prevFile => prevFile) // Trigger re-render
+    // FileTree component handles actual collapsing via its own handleCollapseAll
   }
 
   const sidebar = (
@@ -420,18 +369,16 @@ Please check if the file exists and try again.`)
           <div className="text-sm text-blue-800 dark:text-blue-200">
             <div className="font-medium mb-1">🔗 Connect to GitHub</div>
             <div className="text-xs text-blue-600 dark:text-blue-300 mb-2">
-              Click "Connect" to load files from your repository: soul059/Learning
+              Click "Connect" to load files from your repository
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={async () => {
-                console.log('Manual connection attempt...')
                 try {
                   await loadFiles()
-                  console.log('Manual connection successful!')
                 } catch (err) {
-                  console.error('Manual connection failed:', err)
+                  console.error('Connection failed:', err)
                 }
               }}
               className="text-xs bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
@@ -445,7 +392,7 @@ Please check if the file exists and try again.`)
           <div className="text-sm text-green-800 dark:text-green-200">
             <div className="font-medium mb-1">✅ Connected to GitHub</div>
             <div className="text-xs text-green-600 dark:text-green-300">
-              Showing files from: soul059/Learning
+              Showing files from: {config.owner}/{config.repo}
               {githubFiles.length > 0 && ` (${githubFiles.length} files found)`}
             </div>
           </div>

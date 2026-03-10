@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { 
   Github, 
   X, 
-  GitPullRequest, 
   Database, 
   Trash2, 
   Wifi, 
@@ -23,7 +22,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useGitHub, useGitHubAuth } from '@/contexts/GitHubProvider'
 import { GitHubAuthModal } from './GitHubAuthModal'
-import { CreatePullRequestModal } from './CreatePullRequestModal'
 import { CacheService } from '@/lib/cache'
 import { cn } from '@/lib/utils'
 
@@ -34,7 +32,6 @@ interface GitHubPanelProps {
 
 export function GitHubPanel({ isOpen, onClose }: GitHubPanelProps) {
   const [showAuthModal, setShowAuthModal] = useState(false)
-  const [showPRModal, setShowPRModal] = useState(false)
   const [cacheStats, setCacheStats] = useState(CacheService.getStats())
   const [repoInfo, setRepoInfo] = useState<any>(null)
   const [repoInput, setRepoInput] = useState('')
@@ -376,16 +373,6 @@ export function GitHubPanel({ isOpen, onClose }: GitHubPanelProps) {
                     </Button>
                   ) : (
                     <div className="space-y-2">
-                      {hasWriteAccess && (
-                        <Button
-                          variant="default"
-                          onClick={() => setShowPRModal(true)}
-                          className="w-full bg-green-600 hover:bg-green-700"
-                        >
-                          <GitPullRequest className="w-4 h-4 mr-2" />
-                          Create Pull Request
-                        </Button>
-                      )}
                       <Button
                         variant="outline"
                         onClick={logout}
@@ -407,16 +394,6 @@ export function GitHubPanel({ isOpen, onClose }: GitHubPanelProps) {
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
       />
-      
-      {showPRModal && (
-        <CreatePullRequestModal
-          isOpen={showPRModal}
-          onClose={() => setShowPRModal(false)}
-          filePath="README.md"
-          content=""
-          originalContent=""
-        />
-      )}
     </>
   )
 }

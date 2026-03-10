@@ -34,12 +34,18 @@ export function useFileDiscovery() {
 export async function getAllMarkdownFiles(): Promise<string[]> {
   const files: string[] = []
   
-  // Only check for files that we know exist in our welcome directory
+  // Only check for files that we know exist in our directories
   const actualFiles = [
     'welcome/home.md',
     'welcome/index.md',
     'welcome/quick-start.md',
-    'welcome/features.md'
+    'welcome/features.md',
+    'welcome/emoji-test.md',
+    'notes/getting-started/introduction.md',
+    'notes/getting-started/setup.md',
+    'notes/guides/github-integration.md',
+    'notes/guides/search-guide.md',
+    'notes/programming/javascript/react-hooks.md'
   ]
 
   // Check each file to make sure it exists

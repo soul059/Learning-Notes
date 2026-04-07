@@ -65,15 +65,18 @@ export function Layout({
   // Update user state when panel states change
   useEffect(() => {
     userState.setPanelState('github', githubPanelOpen)
-  }, [githubPanelOpen, userState])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [githubPanelOpen])
   
   useEffect(() => {
     userState.setPanelState('settings', settingsPanelOpen)
-  }, [settingsPanelOpen, userState])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsPanelOpen])
   
   useEffect(() => {
     userState.setPanelState('search', searchOpen)
-  }, [searchOpen, userState])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchOpen])
 
   // Responsive sidebar handling
   useEffect(() => {
@@ -280,14 +283,6 @@ export function Layout({
         {/* Status Bar */}
         <StatusBar currentFile={currentFile} />
       </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
 
       {/* Search Modal */}
       <SearchModal 

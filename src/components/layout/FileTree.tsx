@@ -63,6 +63,9 @@ function FileTreeItem({
     if (isDirectory) {
       console.log('🗂️ Directory clicked:', { path: item.path, expanded, hasLoadedChildren, hasChildren })
       
+      // Prevent double-clicks while loading
+      if (loading) return
+      
       if (!expanded) {
         // If folder is not expanded and hasn't loaded children yet, load them
         if (!hasLoadedChildren) {

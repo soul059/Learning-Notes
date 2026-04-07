@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { FileTree } from '@/components/layout/FileTree'
 import { MarkdownViewer } from '@/components/markdown/MarkdownViewer'
@@ -132,6 +133,8 @@ Connect your repository to:
 function AppContent() {
   // User state management
   const userState = useUserState()
+  const navigate = useNavigate()
+  const location = useLocation()
   
   // State for selected file and content
   const [selectedFile, setSelectedFile] = useState('')
@@ -164,9 +167,10 @@ function AppContent() {
   
   // Initialize cache optimization on app start
   useEffect(() => {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       CacheService.optimizeCache()
     }, 1000)
+    return () => clearTimeout(timer)
   }, [])
   
   // Get GitHub context
@@ -178,6 +182,25 @@ function AppContent() {
   // Determine which files and tree to use - FORCE GitHub when connected
   const useGitHubFiles = isConnected
   const fileTree = useGitHubFiles ? githubFileTree : buildFileTree(localFiles)
+  
+  // Sync URL with file selection - read file from URL on load
+  useEffect(() => {
+    const pathFromUrl = location.pathname.slice(1) // Remove leading /
+    if (pathFromUrl && pathFromUrl.endsWith('.md')) {
+      const decodedPath = decodeURIComponent(pathFromUrl)
+      
+      // For GitHub files, wait until files are loaded
+      if (isConnected && githubFiles.length === 0) {
+        return // Wait for GitHub files to load
+      }
+      
+      if (decodedPath !== selectedFile) {
+        setSelectedFile(decodedPath)
+        handleFileSelect(decodedPath)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, isConnected, githubFiles.length])
   
   // Sync selectedFile with user state currentFile
   useEffect(() => {
@@ -209,10 +232,30 @@ function AppContent() {
         setMarkdownContent(sampleMarkdown)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.owner, config.repo, config.branch, githubFiles])
   
   // Update default file when GitHub files are loaded or repository changes
   useEffect(() => {
+    // Check if there's a file path in the URL first
+    const pathFromUrl = location.pathname.slice(1)
+    if (pathFromUrl && pathFromUrl.endsWith('.md')) {
+      const decodedPath = decodeURIComponent(pathFromUrl)
+      // If URL has a valid file path, use it instead of default
+      if (useGitHubFiles && githubFiles.length > 0) {
+        const fileExistsInGithub = githubFiles.some((f: any) => f.path === decodedPath)
+        if (fileExistsInGithub) {
+          setSelectedFile(decodedPath)
+          handleFileSelect(decodedPath)
+          return
+        }
+      } else if (!useGitHubFiles && localFiles.includes(decodedPath)) {
+        setSelectedFile(decodedPath)
+        handleFileSelect(decodedPath)
+        return
+      }
+    }
+    
     if (useGitHubFiles && githubFiles.length > 0) {
       const savedFile = userState.currentFile
       const savedFileExists = savedFile && githubFiles.some((f: any) => f.path === savedFile)
@@ -245,11 +288,16 @@ function AppContent() {
       setSelectedFile(welcomeHome)
       handleFileSelect(welcomeHome)
     }
-  }, [githubFiles, useGitHubFiles, localFiles, config.owner, config.repo, userState.currentFile])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [githubFiles, useGitHubFiles, localFiles, config.owner, config.repo])
 
   const handleFileSelect = async (filePath: string) => {
     console.log('🔍 File selection started:', { filePath, selectedFile, isConnected })
     setSelectedFile(filePath)
+    
+    // Update URL to reflect the selected file
+    const encodedPath = encodeURIComponent(filePath).replace(/%2F/g, '/')
+    navigate(`/${encodedPath}`, { replace: true })
     
     // Save current file to user state
     console.log('💾 Saving current file to user state:', filePath)
@@ -343,6 +391,7 @@ Please check if the file exists and try again.`)
     if (selectedFile) {
       handleFileSelect(selectedFile)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleContentChange = (newContent: string) => {
@@ -463,13 +512,15 @@ Please check if the file exists and try again.`)
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="system" storageKey="learning-notes-theme">
-        <ToastProvider>
-          <GitHubProvider>
-            <AppContent />
-          </GitHubProvider>
-        </ToastProvider>
-      </ThemeProvider>
+      <BrowserRouter>
+        <ThemeProvider defaultTheme="system" storageKey="learning-notes-theme">
+          <ToastProvider>
+            <GitHubProvider>
+              <AppContent />
+            </GitHubProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   )
 }

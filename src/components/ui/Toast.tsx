@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect, createContext, useContext, useRef, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -38,8 +38,27 @@ interface ToastProviderProps {
 
 export function ToastProvider({ children }: ToastProviderProps) {
   const [toasts, setToasts] = useState<Toast[]>([])
+  const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map())
 
-  const addToast = (toast: Omit<Toast, 'id'>) => {
+  // Cleanup all timeouts on unmount
+  useEffect(() => {
+    return () => {
+      timeoutRefs.current.forEach(timeout => clearTimeout(timeout))
+      timeoutRefs.current.clear()
+    }
+  }, [])
+
+  const removeToast = useCallback((id: string) => {
+    // Clear the timeout if it exists
+    const timeout = timeoutRefs.current.get(id)
+    if (timeout) {
+      clearTimeout(timeout)
+      timeoutRefs.current.delete(id)
+    }
+    setToasts(prev => prev.filter(toast => toast.id !== id))
+  }, [])
+
+  const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).substr(2, 9)
     const newToast = { ...toast, id }
     
@@ -48,19 +67,20 @@ export function ToastProvider({ children }: ToastProviderProps) {
     // Auto remove after duration
     const duration = toast.duration ?? 5000
     if (duration > 0) {
-      setTimeout(() => {
-        removeToast(id)
+      const timeout = setTimeout(() => {
+        timeoutRefs.current.delete(id)
+        setToasts(prev => prev.filter(t => t.id !== id))
       }, duration)
+      timeoutRefs.current.set(id, timeout)
     }
-  }
+  }, [])
 
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id))
-  }
-
-  const clearAllToasts = () => {
+  const clearAllToasts = useCallback(() => {
+    // Clear all timeouts
+    timeoutRefs.current.forEach(timeout => clearTimeout(timeout))
+    timeoutRefs.current.clear()
     setToasts([])
-  }
+  }, [])
 
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast, clearAllToasts }}>

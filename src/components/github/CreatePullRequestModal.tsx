@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { GitPullRequest, X, ExternalLink, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,8 +27,18 @@ export function CreatePullRequestModal({
   const [isLoading, setIsLoading] = useState(false)
   const [pullRequestUrl, setPullRequestUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const { createPullRequest, config, hasWriteAccess } = useGitHub()
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoCloseTimerRef.current) {
+        clearTimeout(autoCloseTimerRef.current)
+      }
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,7 +58,7 @@ export function CreatePullRequestModal({
       setPullRequestUrl(pr.html_url)
       
       // Auto-close after a delay to show success
-      setTimeout(() => {
+      autoCloseTimerRef.current = setTimeout(() => {
         onClose()
         setPullRequestUrl(null)
       }, 3000)

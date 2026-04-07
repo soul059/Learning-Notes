@@ -371,7 +371,7 @@ export class GitHubService {
         repo: this.config.repo,
         path,
         message,
-        content: btoa(content), // Base64 encode
+        content: btoa(unescape(encodeURIComponent(content))), // Base64 encode with UTF-8 support
         branch,
         ...(sha && { sha })
       })

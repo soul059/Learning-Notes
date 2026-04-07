@@ -17,6 +17,7 @@ interface GitHubContextType {
   files: GitHubFile[]
   fileTree: any[]
   isLoading: boolean
+  isRefreshing: boolean // Background refresh indicator
   error: string | null
   
   // Actions
@@ -46,6 +47,7 @@ export function GitHubProvider({ children, config = defaultGitHubConfig }: GitHu
   const [files, setFiles] = useState<GitHubFile[]>([])
   const [fileTree, setFileTree] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentConfig, setCurrentConfig] = useState(config)
 
@@ -229,11 +231,15 @@ export function GitHubProvider({ children, config = defaultGitHubConfig }: GitHu
         }
         
         console.log('🔄 Cache expired, refreshing in background...')
+        setIsRefreshing(true) // Indicate background refresh
       }
       
       // Load fresh data from GitHub (either no cache or cache expired)
       console.log('🌐 Loading fresh data from GitHub...')
-      setIsLoading(true) // Set loading for background refresh
+      // Only set loading if we don't have cached data
+      if (!cacheInfo.hasStale) {
+        setIsLoading(true)
+      }
       
       const [initialStructure, lazyTree] = await Promise.all([
         githubService.getFolderStructure(), // Get folders and README files
@@ -270,6 +276,7 @@ export function GitHubProvider({ children, config = defaultGitHubConfig }: GitHu
       }
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -464,6 +471,7 @@ export function GitHubProvider({ children, config = defaultGitHubConfig }: GitHu
     files,
     fileTree,
     isLoading,
+    isRefreshing,
     error,
     setToken,
     setRepository,

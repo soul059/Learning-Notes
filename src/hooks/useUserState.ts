@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { UserStateService } from '@/lib/userState'
 import type { UserSessionState } from '@/lib/userState'
+import { devLog } from '@/lib/utils'
 
 export function useUserState() {
   const [state, setState] = useState<UserSessionState>(() => 
@@ -8,6 +9,7 @@ export function useUserState() {
   )
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastSaveRef = useRef<string>('')
+  const isMountedRef = useRef<boolean>(true)
 
   // Debounced save function to prevent excessive localStorage writes
   const debouncedSave = useCallback((stateToSave: UserSessionState) => {
@@ -23,6 +25,8 @@ export function useUserState() {
     }
     
     saveTimeoutRef.current = setTimeout(() => {
+      // Don't save if component is unmounted
+      if (!isMountedRef.current) return
       UserStateService.saveState(stateToSave)
       lastSaveRef.current = serialized
     }, 100) // 100ms debounce
@@ -39,50 +43,50 @@ export function useUserState() {
   
   // Individual state setters - simplified to only use updateState
   const setCurrentFile = useCallback((filePath: string) => {
-    console.log('🎯 useUserState.setCurrentFile called with:', filePath)
+    devLog.log('🎯 useUserState.setCurrentFile called with:', filePath)
     updateState({ currentFile: filePath })
   }, [updateState])
   
   const setExpandedFolders = useCallback((folders: string[]) => {
-    console.log('📁 useUserState.setExpandedFolders called with:', folders)
+    devLog.log('📁 useUserState.setExpandedFolders called with:', folders)
     updateState({ expandedFolders: folders })
   }, [updateState])
   
   const addExpandedFolder = useCallback((folderPath: string) => {
     if (!state.expandedFolders.includes(folderPath)) {
       const newFolders = [...state.expandedFolders, folderPath]
-      console.log('➕ useUserState.addExpandedFolder:', folderPath, 'New total:', newFolders)
+      devLog.log('➕ useUserState.addExpandedFolder:', folderPath, 'New total:', newFolders)
       updateState({ expandedFolders: newFolders })
     }
   }, [state.expandedFolders, updateState])
   
   const removeExpandedFolder = useCallback((folderPath: string) => {
     const newFolders = state.expandedFolders.filter(f => f !== folderPath)
-    console.log('➖ useUserState.removeExpandedFolder:', folderPath, 'New total:', newFolders)
+    devLog.log('➖ useUserState.removeExpandedFolder:', folderPath, 'New total:', newFolders)
     updateState({ expandedFolders: newFolders })
   }, [state.expandedFolders, updateState])
   
   const setScrollPosition = useCallback((filePath: string, position: number) => {
-    console.log('📍 useUserState.setScrollPosition:', { filePath, position })
+    devLog.log('📍 useUserState.setScrollPosition:', { filePath, position })
     updateState({
       scrollPosition: { file: filePath, position }
     })
   }, [updateState])
   
   const setPanelState = useCallback((panel: keyof UserSessionState['panels'], isOpen: boolean) => {
-    console.log('🔧 useUserState.setPanelState:', { panel, isOpen })
+    devLog.log('🔧 useUserState.setPanelState:', { panel, isOpen })
     updateState({
       panels: { ...state.panels, [panel]: isOpen }
     })
   }, [state.panels, updateState])
   
   const setTheme = useCallback((theme: 'light' | 'dark' | 'system') => {
-    console.log('🎨 useUserState.setTheme:', theme)
+    devLog.log('🎨 useUserState.setTheme:', theme)
     updateState({ theme })
   }, [updateState])
   
   const setRepository = useCallback((owner: string, repo: string, branch: string = 'main') => {
-    console.log('🏗️ useUserState.setRepository:', { owner, repo, branch })
+    devLog.log('🏗️ useUserState.setRepository:', { owner, repo, branch })
     updateState({
       repository: { owner, repo, branch }
     })
@@ -98,13 +102,18 @@ export function useUserState() {
     setState(UserStateService.loadState())
   }, [])
   
-  // Auto-save activity timestamp periodically
+  // Auto-save activity timestamp periodically and track mount state
   useEffect(() => {
+    isMountedRef.current = true
+    
     const interval = setInterval(() => {
-      UserStateService.saveState({ lastActivity: Date.now() })
+      if (isMountedRef.current) {
+        UserStateService.saveState({ lastActivity: Date.now() })
+      }
     }, 30000) // Save activity every 30 seconds
     
     return () => {
+      isMountedRef.current = false
       clearInterval(interval)
       // Clear any pending save timeout on unmount
       if (saveTimeoutRef.current) {
@@ -156,6 +165,12 @@ export function useUserState() {
 // Hook for restoring scroll position
 export function useScrollRestore(filePath?: string) {
   const [isRestored, setIsRestored] = useState(false)
+  const throttledScrollRef = useRef<((e: Event) => void) | null>(null)
+  
+  // Reset restoration state when file changes
+  useEffect(() => {
+    setIsRestored(false)
+  }, [filePath])
   
   useEffect(() => {
     if (!filePath || isRestored) return
@@ -165,19 +180,20 @@ export function useScrollRestore(filePath?: string) {
     
     if (scrollPosition.file === filePath && scrollPosition.position > 0) {
       // Restore scroll position after a brief delay to ensure content is loaded
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         window.scrollTo(0, scrollPosition.position)
         setIsRestored(true)
-        console.log('📍 Scroll position restored for', filePath, 'at', scrollPosition.position)
+        devLog.log('📍 Scroll position restored for', filePath, 'at', scrollPosition.position)
       }, 100)
+      return () => clearTimeout(timer)
     }
   }, [filePath, isRestored])
   
-  // Save scroll position on scroll
+  // Save scroll position on scroll - with proper cleanup
   useEffect(() => {
     if (!filePath) return
     
-    const handleScroll = () => {
+    const handleScroll = throttle(() => {
       const currentState = UserStateService.loadState()
       const newState = {
         ...currentState,
@@ -185,12 +201,16 @@ export function useScrollRestore(filePath?: string) {
         lastActivity: Date.now()
       }
       UserStateService.saveState(newState)
+    }, 1000) // Save every second
+    
+    throttledScrollRef.current = handleScroll
+    window.addEventListener('scroll', handleScroll)
+    
+    return () => {
+      if (throttledScrollRef.current) {
+        window.removeEventListener('scroll', throttledScrollRef.current)
+      }
     }
-    
-    const throttledScroll = throttle(handleScroll, 1000) // Save every second
-    window.addEventListener('scroll', throttledScroll)
-    
-    return () => window.removeEventListener('scroll', throttledScroll)
   }, [filePath])
 }
 

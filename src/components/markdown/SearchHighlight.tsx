@@ -257,9 +257,9 @@ export function SearchHighlight({ isOpen, onClose, contentRef }: SearchHighlight
     <div className="fixed top-20 right-4 z-50 animate-in slide-in-from-top-2 duration-200">
       <div className={cn(
         "flex items-center gap-2 p-2 rounded-lg shadow-lg border",
-        "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+        "bg-card border-border"
       )}>
-        <Search className="h-4 w-4 text-slate-400" />
+        <Search className="h-4 w-4 text-muted-foreground" />
         <input
           ref={inputRef}
           type="text"
@@ -268,21 +268,21 @@ export function SearchHighlight({ isOpen, onClose, contentRef }: SearchHighlight
           placeholder="Search in page..."
           className={cn(
             "w-48 px-2 py-1 text-sm bg-transparent border-none outline-none",
-            "text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+            "text-foreground placeholder:text-muted-foreground"
           )}
         />
         
         {query && (
-          <span className="text-xs text-slate-500 whitespace-nowrap">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
             {matches.length > 0 ? `${currentMatch + 1} / ${matches.length}` : 'No results'}
           </span>
         )}
 
-        <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+        <div className="flex items-center gap-1 border-l border-border pl-2">
           <button
             onClick={goToPrevious}
             disabled={matches.length === 0}
-            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+            className="p-1 rounded hover:bg-accent disabled:opacity-50"
             title="Previous match (Shift+Enter)"
           >
             <ChevronUp className="h-4 w-4" />
@@ -290,14 +290,14 @@ export function SearchHighlight({ isOpen, onClose, contentRef }: SearchHighlight
           <button
             onClick={goToNext}
             disabled={matches.length === 0}
-            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+            className="p-1 rounded hover:bg-accent disabled:opacity-50"
             title="Next match (Enter)"
           >
             <ChevronDown className="h-4 w-4" />
           </button>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="p-1 rounded hover:bg-accent"
             title="Close (Esc)"
           >
             <X className="h-4 w-4" />

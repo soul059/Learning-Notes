@@ -136,7 +136,7 @@ export function SettingsPanel({ isOpen, onClose, settings: propsSettings, onSett
         "select-none user-select-none", // Prevent text selection on desktop
         "border-2", // More prominent border
         selected && "bg-primary text-primary-foreground border-primary",
-        !selected && "border-gray-300 hover:border-blue-500" // Clear hover state
+        !selected && "border-border hover:border-primary" // Use theme-aware border
       )}
     >
       {selected && <Check className="w-3 h-3 mr-1" />}
@@ -155,9 +155,9 @@ export function SettingsPanel({ isOpen, onClose, settings: propsSettings, onSett
     checked: boolean
     onChange: (checked: boolean) => void
   }) => (
-    <div className="flex items-center justify-between p-3 bg-card rounded-lg border">
+    <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
       <div className="flex-1">
-        <div className="text-sm font-medium">{label}</div>
+        <div className="text-sm font-medium text-foreground">{label}</div>
         {description && (
           <div className="text-xs text-muted-foreground mt-1">{description}</div>
         )}
@@ -180,7 +180,7 @@ export function SettingsPanel({ isOpen, onClose, settings: propsSettings, onSett
           "relative z-[320]", // Even higher z-index
           "select-none user-select-none", // Prevent text selection on desktop
           "border-2", // More prominent border
-          checked ? "bg-green-600 hover:bg-green-700 border-green-600" : "border-gray-300 hover:border-blue-500"
+          checked ? "bg-green-600 hover:bg-green-700 border-green-600" : "border-border hover:border-primary"
         )}
       >
         {checked ? "On" : "Off"}

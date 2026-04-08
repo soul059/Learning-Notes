@@ -80,7 +80,7 @@ export function TableOfContents({ content, isOpen, className }: TableOfContentsP
 
   return (
     <nav className={cn("h-full p-4", className)} aria-label="Table of contents">
-      <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3 pb-2 border-b border-slate-200 dark:border-slate-700">
+      <h3 className="text-sm font-semibold text-foreground mb-3 pb-2 border-b border-border">
         On this page
       </h3>
       <ul className="space-y-1">
@@ -93,10 +93,10 @@ export function TableOfContents({ content, isOpen, className }: TableOfContentsP
               onClick={() => scrollToHeading(heading.id)}
               className={cn(
                 "w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors truncate",
-                "hover:bg-slate-100 dark:hover:bg-slate-800",
+                "hover:bg-accent",
                 activeId === heading.id
-                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 font-medium"
-                  : "text-slate-600 dark:text-slate-400"
+                  ? "text-primary bg-primary/10 font-medium"
+                  : "text-muted-foreground"
               )}
               title={heading.text}
             >

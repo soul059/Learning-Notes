@@ -121,8 +121,8 @@ export function GitHubPanel({ isOpen, onClose }: GitHubPanelProps) {
 
   const getStatusColor = () => {
     if (error) return 'text-destructive'
-    if (isConnected && hasWriteAccess) return 'text-green-600 dark:text-green-400'
-    if (isConnected) return 'text-blue-600 dark:text-blue-400'
+    if (isConnected && hasWriteAccess) return 'text-green-600 dark:text-green-500'
+    if (isConnected) return 'text-blue-600 dark:text-blue-500'
     return 'text-muted-foreground'
   }
 
@@ -185,7 +185,7 @@ export function GitHubPanel({ isOpen, onClose }: GitHubPanelProps) {
                   {getStatusIcon()}
                   Connection Status
                 </h3>
-                <div className="p-3 bg-card rounded-lg border">
+                <div className="p-3 bg-card rounded-lg border border-border">
                   <div className={`flex items-center gap-2 text-sm font-medium ${getStatusColor()}`}>
                     {hasWriteAccess ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                     {getStatusText()}
@@ -215,7 +215,7 @@ export function GitHubPanel({ isOpen, onClose }: GitHubPanelProps) {
                   <Search className="w-4 h-4" />
                   Browse Repository
                 </h3>
-                <div className="p-3 bg-card rounded-lg border space-y-3">
+                <div className="p-3 bg-card rounded-lg border border-border space-y-3">
                   <div className="text-xs text-muted-foreground">
                     Enter any public GitHub repository to browse
                   </div>
@@ -257,7 +257,7 @@ export function GitHubPanel({ isOpen, onClose }: GitHubPanelProps) {
                   <Github className="w-4 h-4" />
                   Repository Information
                 </h3>
-                <div className="p-3 bg-card rounded-lg border space-y-3">
+                <div className="p-3 bg-card rounded-lg border border-border space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{config.owner}/{config.repo}</span>
                     <Button
@@ -309,7 +309,7 @@ export function GitHubPanel({ isOpen, onClose }: GitHubPanelProps) {
                     <User className="w-4 h-4" />
                     Account Status
                   </h3>
-                  <div className="p-3 bg-card rounded-lg border">
+                  <div className="p-3 bg-card rounded-lg border border-border">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center">
                         <User className="w-4 h-4 text-white" />
@@ -332,7 +332,7 @@ export function GitHubPanel({ isOpen, onClose }: GitHubPanelProps) {
                     <Database className="w-4 h-4" />
                     Cache Management
                   </h3>
-                  <div className="p-3 bg-card rounded-lg border">
+                  <div className="p-3 bg-card rounded-lg border border-border">
                     <div className="flex items-center justify-between mb-2">
                       <div className="text-xs text-muted-foreground">
                         {cacheStats.localStorage.itemCount + cacheStats.sessionStorage.itemCount} items cached

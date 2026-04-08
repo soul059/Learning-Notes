@@ -74,7 +74,7 @@ export function GitHubAuthModal({ isOpen, onClose }: GitHubAuthModalProps) {
               <Github className="w-4 h-4" />
               <span className="font-medium">{config.owner}/{config.repo}</span>
               {isConnected && (
-                <span className="ml-auto text-green-600 dark:text-green-400 text-xs">
+                <span className="ml-auto text-green-600 dark:text-green-500 text-xs">
                   ✓ Connected
                 </span>
               )}
@@ -122,7 +122,7 @@ export function GitHubAuthModal({ isOpen, onClose }: GitHubAuthModalProps) {
             {/* Success Display */}
             {isConnected && hasWriteAccess && (
               <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                <p className="text-sm text-green-600 dark:text-green-400">
+                <p className="text-sm text-green-600 dark:text-green-500">
                   ✓ Successfully authenticated with write access
                 </p>
               </div>

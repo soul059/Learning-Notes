@@ -187,12 +187,12 @@ export function CodeBlock({ code, language, settings, theme }: CodeBlockProps) {
   return (
     <div className={cn(
       "code-block group relative rounded-lg overflow-hidden",
-      "border border-slate-200 dark:border-slate-700",
-      "bg-slate-50 dark:bg-slate-900",
+      "border border-border",
+      "bg-muted",
       expanded && "fixed inset-4 z-50 shadow-2xl"
     )}>
       {/* Header */}
-      <div className="code-header flex items-center justify-between px-4 py-2 bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 border-b border-slate-200 dark:border-slate-700">
+      <div className="code-header flex items-center justify-between px-4 py-2 bg-secondary border-b border-border">
         <div className="flex items-center gap-3">
           {/* macOS-style window controls */}
           <div className="flex gap-1.5">
@@ -202,15 +202,15 @@ export function CodeBlock({ code, language, settings, theme }: CodeBlockProps) {
           </div>
           
           {/* Language badge */}
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/50 dark:bg-black/20 border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/50 border border-border">
             <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500" />
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               {language}
             </span>
           </div>
 
           {/* Line count */}
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-muted-foreground">
             {lineCount} lines
           </span>
         </div>
@@ -223,8 +223,8 @@ export function CodeBlock({ code, language, settings, theme }: CodeBlockProps) {
               onClick={() => setCollapsed(!collapsed)}
               className={cn(
                 "p-1.5 rounded text-xs transition-colors",
-                "hover:bg-slate-200 dark:hover:bg-slate-700",
-                "text-slate-500 dark:text-slate-400"
+                "hover:bg-accent",
+                "text-muted-foreground"
               )}
               title={collapsed ? "Expand code" : "Collapse code"}
             >
@@ -237,8 +237,8 @@ export function CodeBlock({ code, language, settings, theme }: CodeBlockProps) {
             onClick={() => setWrapLines(!wrapLines)}
             className={cn(
               "p-1.5 rounded text-xs transition-colors",
-              "hover:bg-slate-200 dark:hover:bg-slate-700",
-              wrapLines ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30" : "text-slate-500 dark:text-slate-400"
+              "hover:bg-accent",
+              wrapLines ? "text-primary bg-primary/10" : "text-muted-foreground"
             )}
             title="Toggle word wrap"
           >
@@ -250,8 +250,8 @@ export function CodeBlock({ code, language, settings, theme }: CodeBlockProps) {
             onClick={() => setShowLineNumbers(!showLineNumbers)}
             className={cn(
               "p-1.5 rounded text-xs transition-colors",
-              "hover:bg-slate-200 dark:hover:bg-slate-700",
-              showLineNumbers ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30" : "text-slate-500 dark:text-slate-400"
+              "hover:bg-accent",
+              showLineNumbers ? "text-primary bg-primary/10" : "text-muted-foreground"
             )}
             title="Toggle line numbers"
           >
@@ -263,8 +263,8 @@ export function CodeBlock({ code, language, settings, theme }: CodeBlockProps) {
             onClick={() => setExpanded(!expanded)}
             className={cn(
               "p-1.5 rounded text-xs transition-colors",
-              "hover:bg-slate-200 dark:hover:bg-slate-700",
-              "text-slate-500 dark:text-slate-400"
+              "hover:bg-accent",
+              "text-muted-foreground"
             )}
             title={expanded ? "Exit fullscreen" : "Fullscreen"}
           >
@@ -276,8 +276,8 @@ export function CodeBlock({ code, language, settings, theme }: CodeBlockProps) {
             onClick={copyToClipboard}
             className={cn(
               "flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors",
-              "hover:bg-slate-200 dark:hover:bg-slate-700",
-              copied ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30" : "text-slate-500 dark:text-slate-400"
+              "hover:bg-accent",
+              copied ? "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30" : "text-muted-foreground"
             )}
             title="Copy code"
           >
@@ -337,10 +337,10 @@ export function CodeBlock({ code, language, settings, theme }: CodeBlockProps) {
 
         {/* Collapse overlay */}
         {collapsed && canCollapse && (
-          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-slate-50 dark:from-slate-900 to-transparent flex items-end justify-center pb-2">
+          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-muted to-transparent flex items-end justify-center pb-2">
             <button
               onClick={() => setCollapsed(false)}
-              className="px-4 py-1.5 text-xs font-medium rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-lg"
+              className="px-4 py-1.5 text-xs font-medium rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg"
             >
               Show all {lineCount} lines
             </button>
@@ -365,9 +365,9 @@ export function InlineCode({ children, ...props }: React.HTMLAttributes<HTMLElem
     <code
       className={cn(
         "inline-code px-1.5 py-0.5 rounded-md text-sm font-medium",
-        "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200",
-        "border border-slate-200 dark:border-slate-700",
-        "hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors duration-150"
+        "bg-muted text-foreground",
+        "border border-border",
+        "hover:bg-accent transition-colors duration-150"
       )}
       {...props}
     >

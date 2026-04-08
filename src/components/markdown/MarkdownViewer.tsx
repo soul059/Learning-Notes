@@ -77,7 +77,7 @@ export function MarkdownViewer({
   // GitHub integration
   const canCreatePR = useGitHub && filePath
   const { hasWriteAccess } = useGitHubContext()
-  const { theme } = useTheme()
+  const { resolvedTheme } = useTheme()
 
   // Sync TOC visibility with settings
   useEffect(() => {
@@ -181,16 +181,16 @@ export function MarkdownViewer({
       {/* Fullscreen overlay - covers entire screen including sidebar */}
       {isFullscreen && (
         <div 
-          className="fixed inset-0 z-[9999] bg-white dark:bg-slate-950"
+          className="fixed inset-0 z-[9999] bg-background"
           style={{ isolation: 'isolate' }}
         >
           <div className="h-full flex flex-col">
             {/* Fullscreen header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-950">
+            <div className="flex items-center justify-between p-4 border-b border-border bg-background">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Fullscreen Preview</span>
+                  <span className="text-sm font-medium text-foreground">Fullscreen Preview</span>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
@@ -215,7 +215,7 @@ export function MarkdownViewer({
             </div>
             
             {/* Fullscreen content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-background">
               <div className={cn(
                 "p-8 prose-custom transition-all duration-200 mx-auto max-w-5xl",
                 settings.fontSize === 'small' && "text-sm",
@@ -237,17 +237,17 @@ export function MarkdownViewer({
                         ? children.join('') 
                         : String(children || '').replace(/\n$/, '')
                       if (match && language) {
-                        return <CodeBlock code={codeString} language={language} settings={settings} theme={theme} />
+                        return <CodeBlock code={codeString} language={language} settings={settings} theme={resolvedTheme} />
                       }
                       return <InlineCode {...props}>{children}</InlineCode>
                     },
                     h1: ({ children }) => {
                       const id = generateId(children)
-                      return <h1 id={id} className="text-3xl font-bold mb-6 mt-8 pb-2 border-b border-slate-200 dark:border-slate-700">{children}</h1>
+                      return <h1 id={id} className="text-3xl font-bold mb-6 mt-8 pb-2 border-b border-border text-foreground">{children}</h1>
                     },
                     h2: ({ children }) => {
                       const id = generateId(children)
-                      return <h2 id={id} className="text-2xl font-semibold mb-4 mt-8">{children}</h2>
+                      return <h2 id={id} className="text-2xl font-semibold mb-4 mt-8 text-foreground">{children}</h2>
                     },
                     h3: ({ children }) => {
                       const id = generateId(children)
@@ -256,18 +256,18 @@ export function MarkdownViewer({
                     img: ({ src, alt, title }) => (
                       <div className="my-8 text-center">
                         <img src={src} alt={alt} title={title} className="max-w-full h-auto rounded-lg shadow-lg" />
-                        {(alt || title) && <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 italic">{title || alt}</p>}
+                        {(alt || title) && <p className="text-sm text-muted-foreground mt-2 italic">{title || alt}</p>}
                       </div>
                     ),
                     table: ({ children }) => (
-                      <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 my-6">
+                      <div className="overflow-hidden rounded-lg border border-border my-6">
                         <div className="overflow-x-auto">
-                          <table className="w-full divide-y divide-slate-200 dark:divide-slate-700">{children}</table>
+                          <table className="w-full divide-y divide-border">{children}</table>
                         </div>
                       </div>
                     ),
                     a: ({ href, children }) => (
-                      <a href={href} target={href?.startsWith('http') ? '_blank' : undefined} rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined} className="text-brand-600 dark:text-brand-400 hover:underline">{children}</a>
+                      <a href={href} target={href?.startsWith('http') ? '_blank' : undefined} rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined} className="text-primary hover:underline">{children}</a>
                     ),
                   }}
                 >
@@ -367,7 +367,7 @@ export function MarkdownViewer({
       <div className="flex-1 flex overflow-hidden">
         {/* Table of Contents sidebar - hidden in fullscreen */}
         {showToc && !isFullscreen && (
-          <div className="w-64 border-r border-slate-200 dark:border-slate-700 overflow-y-auto hidden lg:block">
+          <div className="w-64 border-r border-border overflow-y-auto hidden lg:block">
             <TableOfContents 
               content={content} 
               isOpen={showToc}
@@ -423,7 +423,7 @@ export function MarkdownViewer({
                         code={codeString}
                         language={language}
                         settings={settings}
-                        theme={theme}
+                        theme={resolvedTheme}
                       />
                     )
                   }
@@ -439,13 +439,13 @@ export function MarkdownViewer({
                   <h1 id={id} className={cn(
                     "flex items-center gap-2 scroll-mt-20 group",
                     "text-3xl font-bold mb-6 mt-8 pb-2",
-                    "border-b border-slate-200 dark:border-slate-700",
-                    "text-slate-900 dark:text-slate-100"
+                    "border-b border-border",
+                    "text-foreground"
                   )}>
                     {children}
                     <a 
                       href={`#${id}`} 
-                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-muted-foreground hover:text-foreground"
                       aria-label="Link to this section"
                     >
                       #
@@ -459,12 +459,12 @@ export function MarkdownViewer({
                   <h2 id={id} className={cn(
                     "flex items-center gap-2 scroll-mt-20 group",
                     "text-2xl font-semibold mb-4 mt-8",
-                    "text-slate-800 dark:text-slate-200"
+                    "text-foreground"
                   )}>
                     {children}
                     <a 
                       href={`#${id}`} 
-                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-muted-foreground hover:text-foreground"
                       aria-label="Link to this section"
                     >
                       #
@@ -478,12 +478,12 @@ export function MarkdownViewer({
                   <h3 id={id} className={cn(
                     "flex items-center gap-2 scroll-mt-20 group",
                     "text-xl font-semibold mb-3 mt-6",
-                    "text-slate-700 dark:text-slate-300"
+                    "text-foreground"
                   )}>
                     {children}
                     <a 
                       href={`#${id}`} 
-                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-muted-foreground hover:text-foreground"
                       aria-label="Link to this section"
                     >
                       #
@@ -494,9 +494,9 @@ export function MarkdownViewer({
               
               // Enhanced table with better responsive design
               table: ({ children }) => (
-                <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 my-6 shadow-sm">
+                <div className="overflow-hidden rounded-lg border border-border my-6 shadow-sm">
                   <div className="overflow-x-auto">
-                    <table className="w-full divide-y divide-slate-200 dark:divide-slate-700">
+                    <table className="w-full divide-y divide-border">
                       {children}
                     </table>
                   </div>
@@ -511,7 +511,7 @@ export function MarkdownViewer({
                     alt={alt}
                     title={title}
                     className={cn(
-                      "max-w-full h-auto rounded-lg shadow-lg border border-slate-200 dark:border-slate-700",
+                      "max-w-full h-auto rounded-lg shadow-lg border border-border",
                       "hover:shadow-xl transition-shadow duration-300 cursor-zoom-in"
                     )}
                     onClick={() => {
@@ -519,7 +519,7 @@ export function MarkdownViewer({
                     }}
                   />
                   {(alt || title) && (
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 italic">
+                    <p className="text-sm text-muted-foreground mt-2 italic">
                       {title || alt}
                     </p>
                   )}
@@ -540,7 +540,7 @@ export function MarkdownViewer({
                   return (
                     <a 
                       href={href}
-                      className="text-brand-600 dark:text-brand-400 hover:underline"
+                      className="text-primary hover:underline"
                       onClick={(e) => {
                         // Let the browser handle the scrolling for hash links
                         const element = document.getElementById(href.substring(1))
@@ -575,7 +575,7 @@ export function MarkdownViewer({
                           }, 100)
                         }
                       }}
-                      className="text-brand-600 dark:text-brand-400 hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit"
+                      className="text-primary hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit"
                     >
                       {children}
                     </button>
@@ -588,7 +588,7 @@ export function MarkdownViewer({
                     href={href} 
                     target={href?.startsWith('http') ? '_blank' : undefined}
                     rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-                    className="text-brand-600 dark:text-brand-400 hover:underline"
+                    className="text-primary hover:underline"
                   >
                     {children}
                   </a>

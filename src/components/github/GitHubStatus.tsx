@@ -32,8 +32,8 @@ export function GitHubStatus({ className }: GitHubStatusProps) {
 
   const getStatusColor = () => {
     if (error) return 'text-destructive'
-    if (isConnected && hasWriteAccess) return 'text-green-600 dark:text-green-400'
-    if (isConnected) return 'text-blue-600 dark:text-blue-400'
+    if (isConnected && hasWriteAccess) return 'text-green-600 dark:text-green-500'
+    if (isConnected) return 'text-blue-600 dark:text-blue-500'
     return 'text-muted-foreground'
   }
 
@@ -90,7 +90,7 @@ export function GitHubStatus({ className }: GitHubStatusProps) {
           {isAuthenticated ? (
             <>
               {hasWriteAccess && (
-                <div className="flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-600 dark:text-green-400 rounded text-xs">
+                <div className="flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-600 dark:text-green-500 rounded text-xs">
                   <GitPullRequest className="w-3 h-3" />
                   <span className="hidden sm:inline">PR Ready</span>
                 </div>
@@ -109,7 +109,7 @@ export function GitHubStatus({ className }: GitHubStatusProps) {
               variant="outline"
               size="sm"
               onClick={() => setShowAuthModal(true)}
-              className="text-xs bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
+              className="text-xs bg-primary text-primary-foreground hover:bg-primary/90 border-primary"
             >
               <Settings className="w-3 h-3 mr-1" />
               Connect GitHub

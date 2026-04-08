@@ -293,6 +293,13 @@ function AppContent() {
 
   const handleFileSelect = async (filePath: string) => {
     console.log('🔍 File selection started:', { filePath, selectedFile, isConnected })
+    
+    // Validate file path
+    if (!filePath || !filePath.trim()) {
+      console.error('❌ Invalid file path: empty or null')
+      return
+    }
+    
     setSelectedFile(filePath)
     
     // Update URL to reflect the selected file
@@ -315,10 +322,21 @@ function AppContent() {
       // Resolve relative paths based on current file location
       let resolvedPath = filePath
       
-      // If it's a relative path (doesn't start with / and doesn't contain folder structure)
-      if (!filePath.includes('/') && !filePath.startsWith('/') && selectedFile && selectedFile.includes('/')) {
+      // Check if it's a relative path (starts with ./ or ../ or is a simple filename without leading /)
+      const isRelativePath = filePath.startsWith('./') || 
+                             filePath.startsWith('../') || 
+                             (!filePath.startsWith('/') && !filePath.includes('://'))
+      
+      // If it's a relative path and we have a current file, resolve relative to current directory
+      if (isRelativePath && selectedFile && selectedFile.includes('/')) {
         const currentDir = selectedFile.substring(0, selectedFile.lastIndexOf('/'))
-        resolvedPath = `${currentDir}/${filePath}`
+        // For paths starting with ./ or ../, prepend current directory
+        if (filePath.startsWith('./') || filePath.startsWith('../')) {
+          resolvedPath = `${currentDir}/${filePath}`
+        } else if (!filePath.includes('/')) {
+          // Simple filename without path - assume same directory
+          resolvedPath = `${currentDir}/${filePath}`
+        }
         console.log('📁 Resolved relative path:', { original: filePath, resolved: resolvedPath })
       }
       
@@ -344,21 +362,35 @@ function AppContent() {
         resolvedPath, 
         normalizedPath,
         currentFile: selectedFile,
-        useGitHub: isConnected 
+        useGitHub: isConnected,
+        githubFilesCount: githubFiles.length,
+        hasGitHubService: !!githubService
       })
       
-      // Check if file has content already loaded
-      const existingFile = githubFiles.find(f => f.path === normalizedPath)
+      // Check if file has content already loaded (case-insensitive match)
+      const existingFile = githubFiles.find(f => 
+        f.path === normalizedPath || 
+        f.path.toLowerCase() === normalizedPath.toLowerCase()
+      )
       
       if (existingFile && existingFile.content) {
         console.log('💾 Using cached content for:', normalizedPath)
         setMarkdownContent(existingFile.content)
-      } else if (isConnected && githubService) {
-        // Load content from GitHub on-demand
+      } else if (githubService) {
+        // Load content from GitHub on-demand - use githubService directly, not isConnected
+        // because isConnected might be stale during navigation
         console.log('🌐 Loading content from GitHub for:', normalizedPath)
-        const content = await githubService.getFileContent(normalizedPath)
-        setMarkdownContent(content)
-        console.log('✅ Successfully loaded from GitHub:', normalizedPath)
+        try {
+          const content = await githubService.getFileContent(normalizedPath)
+          setMarkdownContent(content)
+          console.log('✅ Successfully loaded from GitHub:', normalizedPath)
+        } catch (githubError) {
+          console.warn('⚠️ GitHub fetch failed, trying local:', githubError)
+          // Fallback to local file loading if GitHub fails
+          const content = await loadMarkdownFile(normalizedPath, false)
+          setMarkdownContent(content)
+          console.log('✅ Successfully loaded from local (fallback):', normalizedPath)
+        }
       } else {
         // Fallback to local file loading
         console.log('💿 Loading from local files:', normalizedPath)

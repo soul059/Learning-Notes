@@ -254,17 +254,17 @@ export function MarkdownViewer({
                       return <h3 id={id} className="text-xl font-semibold mb-3 mt-6">{children}</h3>
                     },
                     img: ({ src, alt, title }) => (
-                      <div className="my-8 text-center">
-                        <img src={src} alt={alt} title={title} className="max-w-full h-auto rounded-lg shadow-lg" />
-                        {(alt || title) && <p className="text-sm text-muted-foreground mt-2 italic">{title || alt}</p>}
-                      </div>
+                      <span className="block my-8 text-center">
+                        <img src={src} alt={alt} title={title} className="max-w-full h-auto rounded-lg shadow-lg inline-block" />
+                        {(alt || title) && <span className="block text-sm text-muted-foreground mt-2 italic">{title || alt}</span>}
+                      </span>
                     ),
                     table: ({ children }) => (
-                      <div className="overflow-hidden rounded-lg border border-border my-6">
-                        <div className="overflow-x-auto">
+                      <span className="block overflow-hidden rounded-lg border border-border my-6">
+                        <span className="block overflow-x-auto">
                           <table className="w-full divide-y divide-border">{children}</table>
-                        </div>
-                      </div>
+                        </span>
+                      </span>
                     ),
                     a: ({ href, children }) => (
                       <a href={href} target={href?.startsWith('http') ? '_blank' : undefined} rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined} className="text-primary hover:underline">{children}</a>
@@ -505,13 +505,13 @@ export function MarkdownViewer({
               
               // Enhanced images with lightbox support
               img: ({ src, alt, title }) => (
-                <div className="my-8 text-center">
+                <span className="block my-8 text-center">
                   <img 
                     src={src} 
                     alt={alt}
                     title={title}
                     className={cn(
-                      "max-w-full h-auto rounded-lg shadow-lg border border-border",
+                      "max-w-full h-auto rounded-lg shadow-lg border border-border inline-block",
                       "hover:shadow-xl transition-shadow duration-300 cursor-zoom-in"
                     )}
                     onClick={() => {
@@ -519,21 +519,14 @@ export function MarkdownViewer({
                     }}
                   />
                   {(alt || title) && (
-                    <p className="text-sm text-muted-foreground mt-2 italic">
+                    <span className="block text-sm text-muted-foreground mt-2 italic">
                       {title || alt}
-                    </p>
+                    </span>
                   )}
-                </div>
+                </span>
               ),
               a: ({ href, children }) => {
-                // Handle internal markdown file links
-                const isInternalMarkdownLink = href && (
-                  href.endsWith('.md') || 
-                  href.includes('.md#') ||
-                  (!href.startsWith('http') && !href.startsWith('mailto:') && !href.startsWith('#'))
-                )
-                
-                // Handle hash-only links (internal page anchors)
+                // Handle hash-only links (internal page anchors) first
                 const isHashLink = href && href.startsWith('#')
                 
                 if (isHashLink) {
@@ -555,31 +548,51 @@ export function MarkdownViewer({
                   )
                 }
                 
-                if (isInternalMarkdownLink && onFileSelect) {
+                // Handle internal markdown file links - if it ends with .md or contains .md#
+                const isInternalMarkdownLink = href && (
+                  href.endsWith('.md') || 
+                  href.includes('.md#')
+                )
+                
+                // Handle folder links - links without extension that aren't external
+                const isFolderLink = href && 
+                  !href.startsWith('http') && 
+                  !href.startsWith('mailto:') &&
+                  !href.includes('.') && // No file extension
+                  !href.startsWith('#')
+                
+                if ((isInternalMarkdownLink || isFolderLink) && onFileSelect) {
                   // Extract the file path and hash fragment
-                  const [cleanPath, hash] = href.split('#')
+                  const [cleanPath, hash] = (href || '').split('#')
                   
-                  return (
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault()
-                        onFileSelect(cleanPath)
-                        
-                        // If there's a hash, scroll to it after a short delay to allow content to load
-                        if (hash) {
-                          setTimeout(() => {
-                            const element = document.getElementById(hash)
-                            if (element) {
-                              element.scrollIntoView({ behavior: 'smooth' })
-                            }
-                          }, 100)
-                        }
-                      }}
-                      className="text-primary hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit"
-                    >
-                      {children}
-                    </button>
-                  )
+                  // Only handle if we have a valid path
+                  if (cleanPath && cleanPath.trim()) {
+                    // If it's a folder link, append README.md
+                    const targetPath = isFolderLink ? `${cleanPath}/README.md` : cleanPath
+                    
+                    return (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          console.log('🔗 Internal link clicked:', { href, cleanPath, targetPath, hash, isFolderLink })
+                          onFileSelect(targetPath)
+                          
+                          // If there's a hash, scroll to it after a short delay to allow content to load
+                          if (hash) {
+                            setTimeout(() => {
+                              const element = document.getElementById(hash)
+                              if (element) {
+                                element.scrollIntoView({ behavior: 'smooth' })
+                              }
+                            }, 100)
+                          }
+                        }}
+                        className="text-primary hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit"
+                      >
+                        {children}
+                      </button>
+                    )
+                  }
                 }
                 
                 // Regular external links
